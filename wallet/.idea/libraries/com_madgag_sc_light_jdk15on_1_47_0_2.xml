@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="com.madgag:sc-light-jdk15on:1.47.0.2" type="repository">
+    <properties maven-id="com.madgag:sc-light-jdk15on:1.47.0.2" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/sc-light-jdk15on-1.47.0.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/sc-light-jdk15on-1.47.0.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
