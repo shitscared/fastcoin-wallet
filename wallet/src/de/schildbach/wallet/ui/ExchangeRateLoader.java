@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,8 @@ package de.schildbach.wallet.ui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
-import android.preference.PreferenceManager;
 import android.support.v4.content.CursorLoader;
-import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.ExchangeRatesProvider;
 
 /**
@@ -30,14 +29,14 @@ import de.schildbach.wallet.ExchangeRatesProvider;
  */
 public final class ExchangeRateLoader extends CursorLoader implements OnSharedPreferenceChangeListener
 {
-	private final SharedPreferences prefs;
+	private final Configuration config;
 
-	public ExchangeRateLoader(final Context context)
+	public ExchangeRateLoader(final Context context, final Configuration config)
 	{
 		super(context, ExchangeRatesProvider.contentUri(context.getPackageName()), null, ExchangeRatesProvider.KEY_CURRENCY_CODE,
 				new String[] { null }, null);
 
-		prefs = PreferenceManager.getDefaultSharedPreferences(context);
+		this.config = config;
 	}
 
 	@Override
@@ -45,7 +44,7 @@ public final class ExchangeRateLoader extends CursorLoader implements OnSharedPr
 	{
 		super.onStartLoading();
 
-		prefs.registerOnSharedPreferenceChangeListener(this);
+		config.registerOnSharedPreferenceChangeListener(this);
 
 		onCurrencyChange();
 	}
@@ -53,20 +52,21 @@ public final class ExchangeRateLoader extends CursorLoader implements OnSharedPr
 	@Override
 	protected void onStopLoading()
 	{
-		prefs.unregisterOnSharedPreferenceChangeListener(this);
+		config.unregisterOnSharedPreferenceChangeListener(this);
 
 		super.onStopLoading();
 	}
 
+	@Override
 	public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String key)
 	{
-		if (Constants.PREFS_KEY_EXCHANGE_CURRENCY.equals(key))
+		if (Configuration.PREFS_KEY_EXCHANGE_CURRENCY.equals(key))
 			onCurrencyChange();
 	}
 
 	private void onCurrencyChange()
 	{
-		final String exchangeCurrency = prefs.getString(Constants.PREFS_KEY_EXCHANGE_CURRENCY, null);
+		final String exchangeCurrency = config.getExchangeCurrencyCode();
 
 		setSelectionArgs(new String[] { exchangeCurrency });
 

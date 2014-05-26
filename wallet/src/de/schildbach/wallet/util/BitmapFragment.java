@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 
 package de.schildbach.wallet.util;
 
+import javax.annotation.Nonnull;
+
 import android.app.Activity;
 import android.app.Dialog;
 import android.graphics.Bitmap;
@@ -26,7 +28,7 @@ import android.support.v4.app.FragmentManager;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -37,13 +39,13 @@ public class BitmapFragment extends DialogFragment
 
 	private static final String KEY_BITMAP = "bitmap";
 
-	public static void show(final FragmentManager fm, final Bitmap bitmap)
+	public static void show(final FragmentManager fm, @Nonnull final Bitmap bitmap)
 	{
 		final DialogFragment newFragment = instance(bitmap);
 		newFragment.show(fm, FRAGMENT_TAG);
 	}
 
-	private static BitmapFragment instance(final Bitmap bitmap)
+	private static BitmapFragment instance(@Nonnull final Bitmap bitmap)
 	{
 		final BitmapFragment fragment = new BitmapFragment();
 
@@ -78,6 +80,7 @@ public class BitmapFragment extends DialogFragment
 		imageView.setImageBitmap(bitmap);
 		imageView.setOnClickListener(new View.OnClickListener()
 		{
+			@Override
 			public void onClick(final View v)
 			{
 				dismiss();

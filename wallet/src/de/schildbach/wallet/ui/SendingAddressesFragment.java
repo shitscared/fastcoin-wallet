@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 package de.schildbach.wallet.ui;
 
 import java.util.ArrayList;
+
+import javax.annotation.Nonnull;
 
 import android.app.Activity;
 import android.content.Context;
@@ -42,16 +44,19 @@ import com.actionbarsherlock.view.ActionMode;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.AddressFormatException;
-import com.google.bitcoin.uri.BitcoinURI;
-import com.google.bitcoin.uri.BitcoinURIParseException;
+import com.google.fastcoin.core.Address;
+import com.google.fastcoin.core.AddressFormatException;
+import com.google.fastcoin.core.Transaction;
+import com.google.fastcoin.uri.BitcoinURI;
 
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.PaymentIntent;
+import de.schildbach.wallet.ui.InputParser.StringInputParser;
 import de.schildbach.wallet.util.BitmapFragment;
+import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -85,19 +90,12 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 		super.onCreate(savedInstanceState);
 
 		setHasOptionsMenu(true);
-	}
-
-	@Override
-	public void onActivityCreated(final Bundle savedInstanceState)
-	{
-		super.onActivityCreated(savedInstanceState);
-
-		setEmptyText(getString(R.string.address_book_empty_text));
 
 		adapter = new SimpleCursorAdapter(activity, R.layout.address_book_row, null, new String[] { AddressBookProvider.KEY_LABEL,
 				AddressBookProvider.KEY_ADDRESS }, new int[] { R.id.address_book_row_label, R.id.address_book_row_address }, 0);
 		adapter.setViewBinder(new ViewBinder()
 		{
+			@Override
 			public boolean setViewValue(final View view, final Cursor cursor, final int columnIndex)
 			{
 				if (!AddressBookProvider.KEY_ADDRESS.equals(cursor.getColumnName(columnIndex)))
@@ -115,45 +113,59 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 	}
 
 	@Override
+	public void onViewCreated(View view, Bundle savedInstanceState)
+	{
+		super.onViewCreated(view, savedInstanceState);
+
+		setEmptyText(getString(R.string.address_book_empty_text));
+	}
+
+	@Override
+	public void onDestroy()
+	{
+		loaderManager.destroyLoader(0);
+
+		super.onDestroy();
+	}
+
+	@Override
 	public void onActivityResult(final int requestCode, final int resultCode, final Intent intent)
 	{
 		if (requestCode == REQUEST_CODE_SCAN && resultCode == Activity.RESULT_OK)
 		{
-			final String contents = intent.getStringExtra(ScanActivity.INTENT_EXTRA_RESULT);
+			final String input = intent.getStringExtra(ScanActivity.INTENT_EXTRA_RESULT);
 
-			try
+			new StringInputParser(input)
 			{
-				final Address address;
-
-				if (contents.matches("[a-zA-Z0-9]*"))
+				@Override
+				protected void handlePaymentIntent(final PaymentIntent paymentIntent)
 				{
-					address = new Address(Constants.NETWORK_PARAMETERS, contents);
-				}
-				else
-				{
-					// TODO nicer cross-network handling
-					final BitcoinURI bitcoinUri = new BitcoinURI(Constants.NETWORK_PARAMETERS, contents);
-					address = bitcoinUri.getAddress();
-				}
-
-				// workaround for "IllegalStateException: Can not perform this action after onSaveInstanceState"
-				handler.postDelayed(new Runnable()
-				{
-					public void run()
+					// workaround for "IllegalStateException: Can not perform this action after onSaveInstanceState"
+					handler.postDelayed(new Runnable()
 					{
-						EditAddressBookEntryFragment.edit(getFragmentManager(), address.toString());
-					}
-				}, 500);
+						@Override
+						public void run()
+						{
+							if (paymentIntent.hasAddress())
+								EditAddressBookEntryFragment.edit(getFragmentManager(), paymentIntent.getAddress().toString());
+							else
+								dialog(activity, null, R.string.address_book_options_scan_title, R.string.address_book_options_scan_invalid);
+						}
+					}, 500);
+				}
 
-			}
-			catch (final AddressFormatException x)
-			{
-				activity.parseErrorDialog(contents);
-			}
-			catch (final BitcoinURIParseException x)
-			{
-				activity.parseErrorDialog(contents);
-			}
+				@Override
+				protected void handleDirectTransaction(final Transaction transaction)
+				{
+					cannotClassify(input);
+				}
+
+				@Override
+				protected void error(final int messageResId, final Object... messageArgs)
+				{
+					dialog(activity, null, R.string.address_book_options_scan_title, messageResId, messageArgs);
+				}
+			}.parse();
 		}
 	}
 
@@ -190,21 +202,36 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 	{
 		if (clipboardManager.hasText())
 		{
-			final String text = clipboardManager.getText().toString().trim();
+			final String input = clipboardManager.getText().toString().trim();
 
-			try
+			new StringInputParser(input)
 			{
-				final Address address = new Address(Constants.NETWORK_PARAMETERS, text);
-				EditAddressBookEntryFragment.edit(getFragmentManager(), address.toString());
-			}
-			catch (final AddressFormatException x)
-			{
-				activity.toast(R.string.send_coins_parse_address_error_msg);
-			}
+				@Override
+				protected void handlePaymentIntent(final PaymentIntent paymentIntent)
+				{
+					if (paymentIntent.hasAddress())
+						EditAddressBookEntryFragment.edit(getFragmentManager(), paymentIntent.getAddress().toString());
+					else
+						dialog(activity, null, R.string.address_book_options_paste_from_clipboard_title,
+								R.string.address_book_options_paste_from_clipboard_invalid);
+				}
+
+				@Override
+				protected void handleDirectTransaction(final Transaction transaction)
+				{
+					cannotClassify(input);
+				}
+
+				@Override
+				protected void error(final int messageResId, final Object... messageArgs)
+				{
+					dialog(activity, null, R.string.address_book_options_paste_from_clipboard_title, messageResId, messageArgs);
+				}
+			}.parse();
 		}
 		else
 		{
-			activity.toast(R.string.address_book_options_copy_from_clipboard_msg_empty);
+			activity.toast(R.string.address_book_options_paste_from_clipboard_empty);
 		}
 	}
 
@@ -218,6 +245,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 	{
 		activity.startActionMode(new ActionMode.Callback()
 		{
+			@Override
 			public boolean onCreateActionMode(final ActionMode mode, final Menu menu)
 			{
 				final MenuInflater inflater = mode.getMenuInflater();
@@ -226,6 +254,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 				return true;
 			}
 
+			@Override
 			public boolean onPrepareActionMode(final ActionMode mode, final Menu menu)
 			{
 				final String label = getLabel(position);
@@ -234,6 +263,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 				return true;
 			}
 
+			@Override
 			public boolean onActionItemClicked(final ActionMode mode, final MenuItem item)
 			{
 				switch (item.getItemId())
@@ -272,6 +302,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 				return false;
 			}
 
+			@Override
 			public void onDestroyActionMode(final ActionMode mode)
 			{
 			}
@@ -292,9 +323,15 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 
 	private void handleSend(final String address)
 	{
-		final Intent intent = new Intent(activity, SendCoinsActivity.class);
-		intent.putExtra(SendCoinsActivity.INTENT_EXTRA_ADDRESS, address);
-		startActivity(intent);
+		try
+		{
+			SendCoinsActivity.start(activity, PaymentIntent.fromAddress(address, null));
+		}
+		catch (final AddressFormatException x)
+		{
+			// cannot happen, address was picked from address book
+			throw new RuntimeException(x);
+		}
 	}
 
 	private void handleRemove(final String address)
@@ -307,7 +344,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 	{
 		final String uri = BitcoinURI.convertToBitcoinURI(address, null, null, null);
 		final int size = (int) (256 * getResources().getDisplayMetrics().density);
-		BitmapFragment.show(getFragmentManager(), WalletUtils.getQRCodeBitmap(uri, size));
+		BitmapFragment.show(getFragmentManager(), Qr.bitmap(uri, size));
 	}
 
 	private void handleCopyToClipboard(final String address)
@@ -316,6 +353,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 		activity.toast(R.string.wallet_address_fragment_clipboard_msg);
 	}
 
+	@Override
 	public Loader<Cursor> onCreateLoader(final int id, final Bundle args)
 	{
 		final Uri uri = AddressBookProvider.contentUri(activity.getPackageName());
@@ -324,17 +362,19 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 						+ " COLLATE LOCALIZED ASC");
 	}
 
+	@Override
 	public void onLoadFinished(final Loader<Cursor> loader, final Cursor data)
 	{
 		adapter.swapCursor(data);
 	}
 
+	@Override
 	public void onLoaderReset(final Loader<Cursor> loader)
 	{
 		adapter.swapCursor(null);
 	}
 
-	public void setWalletAddresses(final ArrayList<Address> addresses)
+	public void setWalletAddresses(@Nonnull final ArrayList<Address> addresses)
 	{
 		final StringBuilder builder = new StringBuilder();
 		for (final Address address : addresses)

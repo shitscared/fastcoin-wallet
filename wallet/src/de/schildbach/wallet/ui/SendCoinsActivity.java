@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,163 +17,68 @@
 
 package de.schildbach.wallet.ui;
 
-import java.math.BigInteger;
+import javax.annotation.Nonnull;
 
-import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
-import android.nfc.NfcAdapter;
 import android.os.Bundle;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.uri.BitcoinURI;
-import com.google.bitcoin.uri.BitcoinURIParseException;
 
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.PaymentIntent;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class SendCoinsActivity extends AbstractWalletActivity
+public final class SendCoinsActivity extends AbstractBindServiceActivity
 {
-     static final String INTENT_EXTRA_ADDRESS = "address";
-     static final String INTENT_EXTRA_ADDRESS_LABEL = "address_label";
-     static final String INTENT_EXTRA_AMOUNT = "amount";
+	public static final String INTENT_EXTRA_PAYMENT_INTENT = "payment_intent";
 
-    public static void start(final Context context, final String address, final String addressLabel, final BigInteger amount)
-    {
-        final Intent intent = new Intent(context, SendCoinsActivity.class);
-        intent.putExtra(INTENT_EXTRA_ADDRESS, address);
-        intent.putExtra(INTENT_EXTRA_ADDRESS_LABEL, addressLabel);
-        intent.putExtra(INTENT_EXTRA_AMOUNT, amount);
-        context.startActivity(intent);
-    }
+	public static void start(final Context context, @Nonnull PaymentIntent paymentIntent)
+	{
+		final Intent intent = new Intent(context, SendCoinsActivity.class);
+		intent.putExtra(INTENT_EXTRA_PAYMENT_INTENT, paymentIntent);
+		context.startActivity(intent);
+	}
 
-    public static void start(final Context context, final String uri)
-    {
-        if (uri.matches("[a-zA-Z0-9]*"))
-        {
-            start(context, uri, null, null);
-        }
-        else
-        {
-            try
-            {
-                final BitcoinURI bitcoinUri = new BitcoinURI(null, uri);
-                final Address address = bitcoinUri.getAddress();
-                final String addressLabel = bitcoinUri.getLabel();
-                final BigInteger amount = bitcoinUri.getAmount();
+	@Override
+	protected void onCreate(final Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState);
 
-                start(context, address != null ? address.toString() : null, addressLabel, amount);
-            }
-            catch (final BitcoinURIParseException x)
-            {
-                final Builder dialog = new AlertDialog.Builder(context);
-                dialog.setTitle(R.string.send_coins_uri_parse_error_title);
-                dialog.setMessage(uri);
-                dialog.setNeutralButton(R.string.button_dismiss, null);
-                dialog.show();
-            }
-        }
-    }
+		setContentView(R.layout.send_coins_content);
 
-    @Override
-    protected void onCreate(final Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
+		getWalletApplication().startBlockchainService(false);
 
-        setContentView(R.layout.send_coins_content);
+		final ActionBar actionBar = getSupportActionBar();
+		actionBar.setDisplayHomeAsUpEnabled(true);
+	}
 
-        getWalletApplication().startBlockchainService(false);
+	@Override
+	public boolean onCreateOptionsMenu(final Menu menu)
+	{
+		getSupportMenuInflater().inflate(R.menu.send_coins_activity_options, menu);
 
-        final ActionBar actionBar = getSupportActionBar();
-        actionBar.setDisplayHomeAsUpEnabled(true);
+		return super.onCreateOptionsMenu(menu);
+	}
 
-        handleIntent(getIntent());
-    }
+	@Override
+	public boolean onOptionsItemSelected(final MenuItem item)
+	{
+		switch (item.getItemId())
+		{
+			case android.R.id.home:
+				finish();
+				return true;
 
-    @Override
-    protected void onNewIntent(final Intent intent)
-    {
-        handleIntent(intent);
-    }
+			case R.id.send_coins_options_help:
+				HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_send_coins);
+				return true;
+		}
 
-    @Override
-    public boolean onCreateOptionsMenu(final Menu menu)
-    {
-        getSupportMenuInflater().inflate(R.menu.send_coins_activity_options, menu);
-
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(final MenuItem item)
-    {
-        switch (item.getItemId())
-        {
-            case android.R.id.home:
-                finish();
-                return true;
-
-            case R.id.send_coins_options_help:
-                HelpDialogFragment.page(getSupportFragmentManager(), "help_send_coins");
-                return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    private void handleIntent(final Intent intent)
-    {
-        final String action = intent.getAction();
-        final Uri intentUri = intent.getData();
-        final String scheme = intentUri != null ? intentUri.getScheme() : null;
-
-        final String address;
-        final String addressLabel;
-        final BigInteger amount;
-
-        if ((Intent.ACTION_VIEW.equals(action) || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) && intentUri != null && "fastcoin".equals(scheme))
-        {
-            try
-            {
-                final BitcoinURI bitcoinUri = new BitcoinURI(null, intentUri.toString());
-                address = bitcoinUri.getAddress().toString();
-                addressLabel = bitcoinUri.getLabel();
-                amount = bitcoinUri.getAmount();
-            }
-            catch (final BitcoinURIParseException x)
-            {
-                parseErrorDialog(intentUri.toString());
-                return;
-            }
-        }
-        else if (intent.hasExtra(INTENT_EXTRA_ADDRESS))
-        {
-            address = intent.getStringExtra(INTENT_EXTRA_ADDRESS);
-            addressLabel = intent.getStringExtra(INTENT_EXTRA_ADDRESS_LABEL);
-            amount = (BigInteger) intent.getSerializableExtra(INTENT_EXTRA_AMOUNT);
-        }
-        else
-        {
-            return;
-        }
-
-        if (address != null || amount != null)
-            updateSendCoinsFragment(address, addressLabel, amount);
-        else
-            longToast(R.string.send_coins_parse_address_error_msg);
-    }
-
-    private void updateSendCoinsFragment(final String receivingAddress, final String receivingLabel, final BigInteger amount)
-    {
-        final SendCoinsFragment sendCoinsFragment = (SendCoinsFragment) getSupportFragmentManager().findFragmentById(R.id.send_coins_fragment);
-
-        sendCoinsFragment.update(receivingAddress, receivingLabel, amount);
-    }
+		return super.onOptionsItemSelected(item);
+	}
 }

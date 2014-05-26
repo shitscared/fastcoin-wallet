@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,27 +19,36 @@ package de.schildbach.wallet.util;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Set;
+
+import javax.annotation.Nonnull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.os.Build;
 
-import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.TransactionOutput;
-import com.google.bitcoin.core.Wallet;
+import com.google.fastcoin.core.Transaction;
+import com.google.fastcoin.core.TransactionOutput;
+import com.google.fastcoin.core.Wallet;
 
+import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 
 /**
@@ -49,19 +58,18 @@ public class CrashReporter
 {
 	private static final String BACKGROUND_TRACES_FILENAME = "background.trace";
 	private static final String CRASH_TRACE_FILENAME = "crash.trace";
-	private static final String CRASH_APPLICATION_LOG_FILENAME = "crash.log";
 
 	private static final long TIME_CREATE_APPLICATION = System.currentTimeMillis();
 
 	private static File backgroundTracesFile;
 	private static File crashTraceFile;
-	private static File crashApplicationLogFile;
 
-	public static void init(final File cacheDir)
+	private static final Logger log = LoggerFactory.getLogger(CrashReporter.class);
+
+	public static void init(@Nonnull final File cacheDir)
 	{
 		backgroundTracesFile = new File(cacheDir, BACKGROUND_TRACES_FILENAME);
 		crashTraceFile = new File(cacheDir, CRASH_TRACE_FILENAME);
-		crashApplicationLogFile = new File(cacheDir, CRASH_APPLICATION_LOG_FILENAME);
 
 		Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler(Thread.getDefaultUncaughtExceptionHandler()));
 	}
@@ -71,13 +79,13 @@ public class CrashReporter
 		return backgroundTracesFile.exists();
 	}
 
-	public static void appendSavedBackgroundTraces(final Appendable report) throws IOException
+	public static void appendSavedBackgroundTraces(@Nonnull final Appendable report) throws IOException
 	{
 		BufferedReader reader = null;
 
 		try
 		{
-			reader = new BufferedReader(new FileReader(backgroundTracesFile));
+			reader = new BufferedReader(new InputStreamReader(new FileInputStream(backgroundTracesFile), Constants.UTF_8));
 			copy(reader, report);
 		}
 		finally
@@ -94,13 +102,13 @@ public class CrashReporter
 		return crashTraceFile.exists();
 	}
 
-	public static void appendSavedCrashTrace(final Appendable report) throws IOException
+	public static void appendSavedCrashTrace(@Nonnull final Appendable report) throws IOException
 	{
 		BufferedReader reader = null;
 
 		try
 		{
-			reader = new BufferedReader(new FileReader(crashTraceFile));
+			reader = new BufferedReader(new InputStreamReader(new FileInputStream(crashTraceFile), Constants.UTF_8));
 			copy(reader, report);
 		}
 		finally
@@ -112,25 +120,7 @@ public class CrashReporter
 		}
 	}
 
-	public static void appendSavedCrashApplicationLog(final Appendable report) throws IOException
-	{
-		BufferedReader reader = null;
-
-		try
-		{
-			reader = new BufferedReader(new FileReader(crashApplicationLogFile));
-			copy(reader, report);
-		}
-		finally
-		{
-			if (reader != null)
-				reader.close();
-
-			crashApplicationLogFile.delete();
-		}
-	}
-
-	private static void copy(final BufferedReader in, final Appendable out) throws IOException
+	private static void copy(@Nonnull final BufferedReader in, @Nonnull final Appendable out) throws IOException
 	{
 		while (true)
 		{
@@ -142,13 +132,13 @@ public class CrashReporter
 		}
 	}
 
-	public static void appendDeviceInfo(final Appendable report, final Context context) throws IOException
+	public static void appendDeviceInfo(@Nonnull final Appendable report, final Context context) throws IOException
 	{
 		final Resources res = context.getResources();
 		final Configuration config = res.getConfiguration();
 		final ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
 
-		report.append("Phone Model: " + android.os.Build.MODEL + "\n");
+		report.append("Device Model: " + android.os.Build.MODEL + "\n");
 		report.append("Android Version: " + android.os.Build.VERSION.RELEASE + "\n");
 		report.append("Board: " + android.os.Build.BOARD + "\n");
 		report.append("Brand: " + android.os.Build.BRAND + "\n");
@@ -158,7 +148,6 @@ public class CrashReporter
 		report.append("Host: " + android.os.Build.HOST + "\n");
 		report.append("ID: " + android.os.Build.ID + "\n");
 		// report.append("Manufacturer: " + manufacturer + "\n");
-		report.append("Model: " + android.os.Build.MODEL + "\n");
 		report.append("Product: " + android.os.Build.PRODUCT + "\n");
 		report.append("Tags: " + android.os.Build.TAGS + "\n");
 		report.append("Time: " + android.os.Build.TIME + "\n");
@@ -168,86 +157,92 @@ public class CrashReporter
 		report.append("Screen Layout: size " + (config.screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) + " long "
 				+ (config.screenLayout & Configuration.SCREENLAYOUT_LONG_MASK) + "\n");
 		report.append("Display Metrics: " + res.getDisplayMetrics() + "\n");
-		report.append("Memory Class: " + activityManager.getMemoryClass() + "\n");
+		report.append("Memory Class: " + activityManager.getMemoryClass()
+				+ (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB ? "/" + largeMemoryClass(activityManager) : "") + "\n");
 	}
 
-	public static void appendApplicationInfo(final Appendable report, final WalletApplication application) throws IOException
+	private static int largeMemoryClass(@Nonnull final ActivityManager activityManager)
 	{
 		try
 		{
-			final PackageManager pm = application.getPackageManager();
-			final PackageInfo pi = pm.getPackageInfo(application.getPackageName(), 0);
-			report.append("Version: " + pi.versionName + " (" + pi.versionCode + ")\n");
-			report.append("Package: " + pi.packageName + "\n");
-			report.append("Time of application create: " + String.format("%tF %tT", TIME_CREATE_APPLICATION, TIME_CREATE_APPLICATION) + "\n");
-			final long now = System.currentTimeMillis();
-			report.append("Current time: " + String.format("%tF %tT", now, now) + "\n");
-			final Wallet wallet = application.getWallet();
-			report.append("Keychain size: " + wallet.getKeychainSize() + "\n");
+			return (Integer) ActivityManager.class.getMethod("getLargeMemoryClass").invoke(activityManager);
+		}
+		catch (final Exception x)
+		{
+			throw new RuntimeException(x);
+		}
+	}
 
-			final Set<Transaction> transactions = wallet.getTransactions(true, true);
-			int numInputs = 0;
-			int numOutputs = 0;
-			int numSpentOutputs = 0;
-			for (final Transaction tx : transactions)
+	public static void appendInstalledPackages(@Nonnull final Appendable report, final Context context) throws IOException
+	{
+		final PackageManager pm = context.getPackageManager();
+		final List<PackageInfo> installedPackages = pm.getInstalledPackages(0);
+
+		// sort by package name
+		Collections.sort(installedPackages, new Comparator<PackageInfo>()
+		{
+			@Override
+			public int compare(final PackageInfo lhs, final PackageInfo rhs)
 			{
-				numInputs += tx.getInputs().size();
-				final List<TransactionOutput> outputs = tx.getOutputs();
-				numOutputs += outputs.size();
-				for (final TransactionOutput txout : outputs)
-				{
-					if (!txout.isAvailableForSpending())
-						numSpentOutputs++;
-				}
+				return lhs.packageName.compareTo(rhs.packageName);
 			}
-			report.append("Transactions: " + transactions.size() + "\n");
-			report.append("Inputs: " + numInputs + "\n");
-			report.append("Outputs: " + numOutputs + " (spent: " + numSpentOutputs + ")\n");
+		});
 
-			report.append("Databases:");
-			for (final String db : application.databaseList())
-				report.append(" " + db);
-			report.append("\n");
-
-			final File filesDir = application.getFilesDir();
-			report.append("\nContents of FilesDir " + filesDir + ":\n");
-			appendDir(report, filesDir, 0);
-			final File cacheDir = application.getCacheDir();
-			report.append("\nContents of CacheDir " + cacheDir + ":\n");
-			appendDir(report, cacheDir, 0);
-		}
-		catch (final NameNotFoundException x)
-		{
-			throw new IOException(x);
-		}
+		for (final PackageInfo p : installedPackages)
+			report.append(String.format("%s %s (%d) - %tF %tF\n", p.packageName, p.versionName, p.versionCode, p.firstInstallTime, p.lastUpdateTime));
 	}
 
-	public static void appendApplicationLog(final Appendable report) throws IOException
+	public static void appendApplicationInfo(@Nonnull final Appendable report, @Nonnull final WalletApplication application) throws IOException
 	{
-		Process process = null;
-		BufferedReader logReader = null;
+		final PackageInfo pi = application.packageInfo();
+		final long now = System.currentTimeMillis();
 
-		try
+		report.append("Version: " + pi.versionName + " (" + pi.versionCode + ")\n");
+		report.append("Package: " + pi.packageName + "\n");
+		report.append("Test/Prod: " + (Constants.TEST ? "test" : "prod") + "\n");
+		report.append("Time: " + String.format("%tF %tT %tz", now, now, now) + "\n");
+		report.append("Time of launch: " + String.format("%tF %tT %tz", TIME_CREATE_APPLICATION, TIME_CREATE_APPLICATION, TIME_CREATE_APPLICATION)
+				+ "\n");
+		report.append("Time of last update: " + String.format("%tF %tT %tz", pi.lastUpdateTime, pi.lastUpdateTime, pi.lastUpdateTime) + "\n");
+		report.append("Time of first install: " + String.format("%tF %tT %tz", pi.firstInstallTime, pi.firstInstallTime, pi.firstInstallTime) + "\n");
+		report.append("Network: " + Constants.NETWORK_PARAMETERS.getId() + "\n");
+		final Wallet wallet = application.getWallet();
+		report.append("Keychain size: " + wallet.getKeychainSize() + "\n");
+
+		final Set<Transaction> transactions = wallet.getTransactions(true);
+		int numInputs = 0;
+		int numOutputs = 0;
+		int numSpentOutputs = 0;
+		for (final Transaction tx : transactions)
 		{
-			// likely to throw exception on older android devices
-			process = Runtime.getRuntime().exec("logcat -d -v time");
-			logReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-			String line;
-			while ((line = logReader.readLine()) != null)
-				report.append(line).append('\n');
+			numInputs += tx.getInputs().size();
+			final List<TransactionOutput> outputs = tx.getOutputs();
+			numOutputs += outputs.size();
+			for (final TransactionOutput txout : outputs)
+			{
+				if (!txout.isAvailableForSpending())
+					numSpentOutputs++;
+			}
 		}
-		finally
-		{
-			if (logReader != null)
-				logReader.close();
+		report.append("Transactions: " + transactions.size() + "\n");
+		report.append("Inputs: " + numInputs + "\n");
+		report.append("Outputs: " + numOutputs + " (spent: " + numSpentOutputs + ")\n");
+		report.append("Last block seen: " + wallet.getLastBlockSeenHeight() + " (" + wallet.getLastBlockSeenHash() + ")\n");
 
-			if (process != null)
-				process.destroy();
-		}
+		report.append("Databases:");
+		for (final String db : application.databaseList())
+			report.append(" " + db);
+		report.append("\n");
+
+		final File filesDir = application.getFilesDir();
+		report.append("\nContents of FilesDir " + filesDir + ":\n");
+		appendDir(report, filesDir, 0);
+		final File logDir = application.getDir("log", Context.MODE_PRIVATE);
+		report.append("\nContents of LogDir " + logDir + ":\n");
+		appendDir(report, logDir, 0);
 	}
 
-	private static void appendDir(final Appendable report, final File file, final int indent) throws IOException
+	private static void appendDir(@Nonnull final Appendable report, @Nonnull final File file, final int indent) throws IOException
 	{
 		for (int i = 0; i < indent; i++)
 			report.append("  - ");
@@ -261,7 +256,7 @@ public class CrashReporter
 				appendDir(report, f, indent + 1);
 	}
 
-	public static void saveBackgroundTrace(final Throwable throwable)
+	public static void saveBackgroundTrace(@Nonnull final Throwable throwable, @Nonnull final PackageInfo packageInfo)
 	{
 		synchronized (backgroundTracesFile)
 		{
@@ -269,24 +264,26 @@ public class CrashReporter
 
 			try
 			{
-				writer = new PrintWriter(new FileWriter(backgroundTracesFile, true));
+				writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(backgroundTracesFile, true), Constants.UTF_8));
 
 				final long now = System.currentTimeMillis();
-				writer.println(String.format("\n--- collected on %tF %tT", now, now));
+				writer.println(String.format("\n--- collected at %tF %tT %tz on version %s (%d)", now, now, now, packageInfo.versionName,
+						packageInfo.versionCode));
 				appendTrace(writer, throwable);
 			}
 			catch (final IOException x)
 			{
-				x.printStackTrace();
+				log.error("problem writing background trace", x);
 			}
 			finally
 			{
-				writer.close();
+				if (writer != null)
+					writer.close();
 			}
 		}
 	}
 
-	private static void appendTrace(final PrintWriter writer, final Throwable throwable)
+	private static void appendTrace(@Nonnull final PrintWriter writer, @Nonnull final Throwable throwable)
 	{
 		throwable.printStackTrace(writer);
 		// If the exception was thrown in a background thread inside
@@ -304,37 +301,30 @@ public class CrashReporter
 	{
 		private final Thread.UncaughtExceptionHandler previousHandler;
 
-		public ExceptionHandler(final Thread.UncaughtExceptionHandler previousHandler)
+		public ExceptionHandler(@Nonnull final Thread.UncaughtExceptionHandler previousHandler)
 		{
 			this.previousHandler = previousHandler;
 		}
 
+		@Override
 		public synchronized void uncaughtException(final Thread t, final Throwable exception)
 		{
 			try
 			{
 				saveCrashTrace(exception);
-				saveApplicationLog();
 			}
 			catch (final IOException x)
 			{
-				x.printStackTrace();
+				log.info("problem writing crash trace", x);
 			}
 
 			previousHandler.uncaughtException(t, exception);
 		}
 
-		private void saveCrashTrace(final Throwable throwable) throws IOException
+		private void saveCrashTrace(@Nonnull final Throwable throwable) throws IOException
 		{
-			final PrintWriter writer = new PrintWriter(new FileWriter(crashTraceFile));
+			final PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(crashTraceFile), Constants.UTF_8));
 			appendTrace(writer, throwable);
-			writer.close();
-		}
-
-		private void saveApplicationLog() throws IOException
-		{
-			final PrintWriter writer = new PrintWriter(new FileWriter(crashApplicationLogFile));
-			appendApplicationLog(writer);
 			writer.close();
 		}
 	}

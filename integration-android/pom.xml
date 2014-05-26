@@ -5,8 +5,8 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>integration-android</artifactId>
-	<version>1.0</version>
-	<name>Bitcoin Integration for Android</name>
+	<version>2.0</version>
+	<name>Fastcoin Integration for Android</name>
 
 	<parent>
 		<groupId>de.schildbach.wallet</groupId>

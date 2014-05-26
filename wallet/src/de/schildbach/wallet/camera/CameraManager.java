@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import android.annotation.SuppressLint;
 import android.graphics.Rect;
 import android.hardware.Camera;
@@ -38,8 +41,6 @@ import com.google.zxing.PlanarYUVLuminanceSource;
  */
 public final class CameraManager
 {
-	private static final boolean CONTINUOUS_FOCUS = true;
-
 	private static final int MIN_FRAME_SIZE = 240;
 	private static final int MAX_FRAME_SIZE = 600;
 	private static final int MIN_PREVIEW_PIXELS = 470 * 320; // normal screen
@@ -50,10 +51,7 @@ public final class CameraManager
 	private Rect frame;
 	private Rect framePreview;
 
-	public Camera getCamera()
-	{
-		return camera;
-	}
+	private static final Logger log = LoggerFactory.getLogger(CameraManager.class);
 
 	public Rect getFrame()
 	{
@@ -65,7 +63,7 @@ public final class CameraManager
 		return framePreview;
 	}
 
-	public void open(final SurfaceHolder holder) throws IOException
+	public Camera open(final SurfaceHolder holder, final boolean continuousAutoFocus) throws IOException
 	{
 		// try back-facing camera
 		camera = Camera.open();
@@ -111,7 +109,7 @@ public final class CameraManager
 
 		try
 		{
-			setDesiredCameraParameters(camera, cameraResolution, false);
+			setDesiredCameraParameters(camera, cameraResolution, continuousAutoFocus);
 		}
 		catch (final RuntimeException x)
 		{
@@ -122,16 +120,18 @@ public final class CameraManager
 				try
 				{
 					camera.setParameters(parameters2);
-					setDesiredCameraParameters(camera, cameraResolution, true);
+					setDesiredCameraParameters(camera, cameraResolution, continuousAutoFocus);
 				}
 				catch (final RuntimeException x2)
 				{
-					x2.printStackTrace();
+					log.info("problem setting camera parameters", x2);
 				}
 			}
 		}
 
 		camera.startPreview();
+
+		return camera;
 	}
 
 	public void close()
@@ -145,6 +145,7 @@ public final class CameraManager
 
 	private static final Comparator<Camera.Size> numPixelComparator = new Comparator<Camera.Size>()
 	{
+		@Override
 		public int compare(final Camera.Size size1, final Camera.Size size2)
 		{
 			final int pixels1 = size1.height * size1.width;
@@ -207,23 +208,16 @@ public final class CameraManager
 	}
 
 	@SuppressLint("InlinedApi")
-	private static void setDesiredCameraParameters(final Camera camera, final Camera.Size cameraResolution, final boolean safeMode)
+	private static void setDesiredCameraParameters(final Camera camera, final Camera.Size cameraResolution, final boolean continuousAutoFocus)
 	{
 		final Camera.Parameters parameters = camera.getParameters();
-
 		if (parameters == null)
 			return;
 
-		String focusMode;
-		if (safeMode || !CONTINUOUS_FOCUS)
-			focusMode = findValue(parameters.getSupportedFocusModes(), Camera.Parameters.FOCUS_MODE_AUTO);
-		else
-			focusMode = findValue(parameters.getSupportedFocusModes(), Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE,
-					Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO, Camera.Parameters.FOCUS_MODE_AUTO);
-
-		if (!safeMode && focusMode == null)
-			focusMode = findValue(parameters.getSupportedFocusModes(), Camera.Parameters.FOCUS_MODE_MACRO, Camera.Parameters.FOCUS_MODE_EDOF);
-
+		final List<String> supportedFocusModes = parameters.getSupportedFocusModes();
+		final String focusMode = continuousAutoFocus ? findValue(supportedFocusModes, Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE,
+				Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO, Camera.Parameters.FOCUS_MODE_AUTO, Camera.Parameters.FOCUS_MODE_MACRO) : findValue(
+				supportedFocusModes, Camera.Parameters.FOCUS_MODE_AUTO, Camera.Parameters.FOCUS_MODE_MACRO);
 		if (focusMode != null)
 			parameters.setFocusMode(focusMode);
 

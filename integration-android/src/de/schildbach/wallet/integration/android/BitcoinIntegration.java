@@ -1,5 +1,5 @@
 /**
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,84 +28,174 @@ import android.widget.Toast;
  */
 public final class BitcoinIntegration
 {
+	private static final String INTENT_EXTRA_PAYMENTREQUEST = "paymentrequest";
+	private static final String INTENT_EXTRA_PAYMENT = "payment";
 	private static final String INTENT_EXTRA_TRANSACTION_HASH = "transaction_hash";
 
+	private static final String MIMETYPE_PAYMENTREQUEST = "application/bitcoin-paymentrequest"; // BIP 71
+
 	/**
-	 * Request any amount of Bitcoins (probably a donation) from user, without feedback from the app.
+	 * Request any amount of Fastcoins (probably a donation) from user, without feedback from the app.
 	 * 
 	 * @param context
 	 *            Android context
 	 * @param address
-	 *            Bitcoin address
+	 *            Fastcoin address
 	 */
 	public static void request(final Context context, final String address)
 	{
-		final Intent intent = makeIntent(address, null);
+		final Intent intent = makeFastcoinUriIntent(address, null);
 
 		start(context, intent);
 	}
 
 	/**
-	 * Request specific amount of Bitcoins from user, without feedback from the app.
+	 * Request specific amount of Fastcoins from user, without feedback from the app.
 	 * 
 	 * @param context
 	 *            Android context
 	 * @param address
-	 *            Bitcoin address
+	 *            Fastcoin address
 	 * @param amount
-	 *            Bitcoin amount in nanocoins
+	 *            Fastcoin amount in nanocoins
 	 */
 	public static void request(final Context context, final String address, final long amount)
 	{
-		final Intent intent = makeIntent(address, amount);
+		final Intent intent = makeFastcoinUriIntent(address, amount);
 
 		start(context, intent);
 	}
 
 	/**
-	 * Request any amount of Bitcoins (probably a donation) from user, with feedback from the app. Result intent can be
+	 * Request payment from user, without feedback from the app.
+	 * 
+	 * @param context
+	 *            Android context
+	 * @param paymentRequest
+	 *            BIP70 formatted payment request
+	 */
+	public static void request(final Context context, final byte[] paymentRequest)
+	{
+		final Intent intent = makePaymentRequestIntent(paymentRequest);
+
+		start(context, intent);
+	}
+
+	/**
+	 * Request any amount of Fastcoins (probably a donation) from user, with feedback from the app. Result intent can be
 	 * received by overriding {@link android.app.Activity#onActivityResult()}. Result indicates either
 	 * {@link Activity#RESULT_OK} or {@link Activity#RESULT_CANCELED}. In the success case, use
 	 * {@link #transactionHashFromResult(Intent)} to read the transaction hash from the intent.
 	 * 
-	 * Warning: A success indication is no guarantee! To be on the safe side, you must drive your own Bitcoin
+	 * Warning: A success indication is no guarantee! To be on the safe side, you must drive your own Fastcoin
 	 * infrastructure and validate the transaction.
 	 * 
-	 * @param context
-	 *            Android context
+	 * @param activity
+	 *            Calling Android activity
+	 * @param requestCode
+	 *            Code identifying the call when {@link android.app.Activity#onActivityResult()} is called back
 	 * @param address
-	 *            Bitcoin address
+	 *            Fastcoin address
 	 */
 	public static void requestForResult(final Activity activity, final int requestCode, final String address)
 	{
-		final Intent intent = makeIntent(address, null);
+		final Intent intent = makeFastcoinUriIntent(address, null);
 
 		startForResult(activity, requestCode, intent);
 	}
 
 	/**
-	 * Request specific amount of Bitcoins from user, with feedback from the app. Result intent can be received by
+	 * Request specific amount of Fastcoins from user, with feedback from the app. Result intent can be received by
 	 * overriding {@link android.app.Activity#onActivityResult()}. Result indicates either {@link Activity#RESULT_OK} or
 	 * {@link Activity#RESULT_CANCELED}. In the success case, use {@link #transactionHashFromResult(Intent)} to read the
 	 * transaction hash from the intent.
 	 * 
-	 * Warning: A success indication is no guarantee! To be on the safe side, you must drive your own Bitcoin
+	 * Warning: A success indication is no guarantee! To be on the safe side, you must drive your own Fastcoin
 	 * infrastructure and validate the transaction.
 	 * 
-	 * @param context
-	 *            Android context
+	 * @param activity
+	 *            Calling Android activity
+	 * @param requestCode
+	 *            Code identifying the call when {@link android.app.Activity#onActivityResult()} is called back
 	 * @param address
-	 *            Bitcoin address
+	 *            Fastcoin address
 	 */
 	public static void requestForResult(final Activity activity, final int requestCode, final String address, final long amount)
 	{
-		final Intent intent = makeIntent(address, amount);
+		final Intent intent = makeFastcoinUriIntent(address, amount);
 
 		startForResult(activity, requestCode, intent);
 	}
 
 	/**
-	 * Put transaction hash into result intent. Meant for usage by Bitcoin wallet applications.
+	 * Request payment from user, with feedback from the app. Result intent can be received by overriding
+	 * {@link android.app.Activity#onActivityResult()}. Result indicates either {@link Activity#RESULT_OK} or
+	 * {@link Activity#RESULT_CANCELED}. In the success case, use {@link #transactionHashFromResult(Intent)} to read the
+	 * transaction hash from the intent.
+	 * 
+	 * Warning: A success indication is no guarantee! To be on the safe side, you must drive your own Fastcoin
+	 * infrastructure and validate the transaction.
+	 * 
+	 * @param activity
+	 *            Calling Android activity
+	 * @param requestCode
+	 *            Code identifying the call when {@link android.app.Activity#onActivityResult()} is called back
+	 * @param paymentRequest
+	 *            BIP70 formatted payment request
+	 */
+	public static void requestForResult(final Activity activity, final int requestCode, final byte[] paymentRequest)
+	{
+		final Intent intent = makePaymentRequestIntent(paymentRequest);
+
+		startForResult(activity, requestCode, intent);
+	}
+
+	/**
+	 * Get payment request from intent. Meant for usage by applications accepting payment requests.
+	 * 
+	 * @param intent
+	 *            intent
+	 * @return payment request or null
+	 */
+	public static byte[] paymentRequestFromIntent(final Intent intent)
+	{
+		final byte[] paymentRequest = intent.getByteArrayExtra(INTENT_EXTRA_PAYMENTREQUEST);
+
+		return paymentRequest;
+	}
+
+	/**
+	 * Put BIP70 payment message into result intent. Meant for usage by Fastcoin wallet applications.
+	 * 
+	 * @param result
+	 *            result intent
+	 * @param payment
+	 *            payment message
+	 */
+	public static void paymentToResult(final Intent result, final byte[] payment)
+	{
+		result.putExtra(INTENT_EXTRA_PAYMENT, payment);
+	}
+
+	/**
+	 * Get BIP70 payment message from result intent. Meant for usage by applications initiating a Fastcoin payment.
+	 * 
+	 * You can use the transactions contained in the payment to validate the payment. For this, you need your own
+	 * Fastcoin infrastructure though. There is no guarantee that the payment will ever confirm.
+	 * 
+	 * @param result
+	 *            result intent
+	 * @return payment message
+	 */
+	public static byte[] paymentFromResult(final Intent result)
+	{
+		final byte[] payment = result.getByteArrayExtra(INTENT_EXTRA_PAYMENT);
+
+		return payment;
+	}
+
+	/**
+	 * Put transaction hash into result intent. Meant for usage by Fastcoin wallet applications.
 	 * 
 	 * @param result
 	 *            result intent
@@ -115,15 +205,14 @@ public final class BitcoinIntegration
 	public static void transactionHashToResult(final Intent result, final String txHash)
 	{
 		result.putExtra(INTENT_EXTRA_TRANSACTION_HASH, txHash);
-		result.putExtra(INTENT_EXTRA_TRANSACTION_HASH_OLD, txHash);
 	}
 
 	/**
-	 * Get transaction hash from result intent. Meant for usage by applications initiating a Bitcoin payment.
+	 * Get transaction hash from result intent. Meant for usage by applications initiating a Fastcoin payment.
 	 * 
-	 * You can use this hash to request the transaction from the Bitcoin network, in order to validate. For this, you
-	 * need your own Bitcoin infrastructure though. There is no guarantee that the transaction has ever been broadcasted
-	 * to the Bitcoin network.
+	 * You can use this hash to request the transaction from the Fastcoin network, in order to validate. For this, you
+	 * need your own Fastcoin infrastructure though. There is no guarantee that the transaction has ever been broadcasted
+	 * to the Fastcoin network.
 	 * 
 	 * @param result
 	 *            result intent
@@ -138,7 +227,7 @@ public final class BitcoinIntegration
 
 	private static final int NANOCOINS_PER_COIN = 100000000;
 
-	private static Intent makeIntent(final String address, final Long amount)
+	private static Intent makeFastcoinUriIntent(final String address, final Long amount)
 	{
 		final StringBuilder uri = new StringBuilder("bitcoin:");
 		if (address != null)
@@ -147,6 +236,15 @@ public final class BitcoinIntegration
 			uri.append("?amount=").append(String.format("%d.%08d", amount / NANOCOINS_PER_COIN, amount % NANOCOINS_PER_COIN));
 
 		final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
+
+		return intent;
+	}
+
+	private static Intent makePaymentRequestIntent(final byte[] paymentRequest)
+	{
+		final Intent intent = new Intent(Intent.ACTION_VIEW);
+		intent.setType(MIMETYPE_PAYMENTREQUEST);
+		intent.putExtra(INTENT_EXTRA_PAYMENTREQUEST, paymentRequest);
 
 		return intent;
 	}
@@ -171,7 +269,7 @@ public final class BitcoinIntegration
 
 	private static void redirectToDownload(final Context context)
 	{
-		Toast.makeText(context, "No Bitcoin application found.\nPlease install Bitcoin Wallet.", Toast.LENGTH_LONG).show();
+		Toast.makeText(context, "No Fastcoin application found.\nPlease install Fastcoin Wallet.", Toast.LENGTH_LONG).show();
 
 		final Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=de.schildbach.wallet"));
 		final Intent binaryIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://code.google.com/p/bitcoin-wallet/downloads/list"));
@@ -183,6 +281,4 @@ public final class BitcoinIntegration
 			context.startActivity(binaryIntent);
 		// else out of luck
 	}
-
-	private static final String INTENT_EXTRA_TRANSACTION_HASH_OLD = "transaction_id";
 }

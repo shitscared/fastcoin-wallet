@@ -3,6 +3,10 @@
   <component name="Encoding" useUTFGuessing="true" native2AsciiForPropertiesFiles="false">
     <file url="file://$PROJECT_DIR$/../integration-android" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../../fastcoinj" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../../fastcoinj/core" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../../fastcoinj/examples" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../../fastcoinj/tools" charset="UTF-8" />
   </component>
 </project>
 

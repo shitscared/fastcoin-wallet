@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@ package de.schildbach.wallet.service;
 
 import java.util.List;
 
-import com.google.bitcoin.core.Peer;
-import com.google.bitcoin.core.StoredBlock;
-import com.google.bitcoin.core.Transaction;
+import javax.annotation.CheckForNull;
 
-import de.schildbach.wallet_test.R;
+import com.google.fastcoin.core.Peer;
+import com.google.fastcoin.core.StoredBlock;
+
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -43,11 +44,11 @@ public interface BlockchainService
 	public static final int ACTION_BLOCKCHAIN_STATE_DOWNLOAD_NETWORK_PROBLEM = 2;
 
 	public static final String ACTION_CANCEL_COINS_RECEIVED = R.class.getPackage().getName() + ".cancel_coins_received";
-	public static final String ACTION_HOLD_WIFI_LOCK = R.class.getPackage().getName() + ".hold_wifi_lock";
 	public static final String ACTION_RESET_BLOCKCHAIN = R.class.getPackage().getName() + ".reset_blockchain";
+	public static final String ACTION_BROADCAST_TRANSACTION = R.class.getPackage().getName() + ".broadcast_transaction";
+	public static final String ACTION_BROADCAST_TRANSACTION_HASH = "hash";
 
-	void broadcastTransaction(Transaction tx);
-
+	@CheckForNull
 	List<Peer> getConnectedPeers();
 
 	List<StoredBlock> getRecentBlocks(int maxBlocks);

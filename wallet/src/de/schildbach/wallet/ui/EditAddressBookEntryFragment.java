@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,10 @@
 
 package de.schildbach.wallet.ui;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -33,7 +35,7 @@ import android.widget.TextView;
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -45,18 +47,18 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 	private static final String KEY_ADDRESS = "address";
 	private static final String KEY_SUGGESTED_ADDRESS_LABEL = "suggested_address_label";
 
-	public static void edit(final FragmentManager fm, final String address)
+	public static void edit(final FragmentManager fm, @Nonnull final String address)
 	{
 		edit(fm, address, null);
 	}
 
-	public static void edit(final FragmentManager fm, final String address, final String suggestedAddressLabel)
+	public static void edit(final FragmentManager fm, @Nonnull final String address, @Nullable final String suggestedAddressLabel)
 	{
 		final DialogFragment newFragment = EditAddressBookEntryFragment.instance(address, suggestedAddressLabel);
 		newFragment.show(fm, FRAGMENT_TAG);
 	}
 
-	private static EditAddressBookEntryFragment instance(final String address, final String suggestedAddressLabel)
+	private static EditAddressBookEntryFragment instance(@Nonnull final String address, @Nullable final String suggestedAddressLabel)
 	{
 		final EditAddressBookEntryFragment fragment = new EditAddressBookEntryFragment();
 
@@ -95,8 +97,8 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 
 		final boolean isAdd = label == null;
 
-		final AlertDialog.Builder dialog = new AlertDialog.Builder(activity);
-		dialog.setInverseBackgroundForced(true);
+		final DialogBuilder dialog = new DialogBuilder(activity);
+
 		dialog.setTitle(isAdd ? R.string.edit_address_book_entry_dialog_title_add : R.string.edit_address_book_entry_dialog_title_edit);
 
 		final View view = inflater.inflate(R.layout.edit_address_book_entry_dialog, null);
@@ -111,6 +113,7 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 
 		final DialogInterface.OnClickListener onClickListener = new DialogInterface.OnClickListener()
 		{
+			@Override
 			public void onClick(final DialogInterface dialog, final int which)
 			{
 				if (which == DialogInterface.BUTTON_POSITIVE)

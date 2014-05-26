@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,17 @@ package de.schildbach.wallet.ui;
 
 import java.io.IOException;
 
-import android.app.AlertDialog;
+import javax.annotation.Nonnull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
@@ -32,10 +39,11 @@ import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockPreferenceActivity;
 import com.actionbarsherlock.view.MenuItem;
 
+import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.CrashReporter;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -48,6 +56,16 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 
 	private static final String PREFS_KEY_REPORT_ISSUE = "report_issue";
 	private static final String PREFS_KEY_INITIATE_RESET = "initiate_reset";
+	private static final String PREFS_KEY_DATA_USAGE = "data_usage";
+
+	private static final Intent dataUsageIntent = new Intent();
+	static
+	{
+		dataUsageIntent.setComponent(Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH ? new ComponentName("com.android.settings",
+				"com.android.settings.Settings$DataUsageSummaryActivity") : new ComponentName("com.android.phone", "com.android.phone.Settings"));
+	}
+
+	private static final Logger log = LoggerFactory.getLogger(PreferencesActivity.class);
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -55,20 +73,22 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 		super.onCreate(savedInstanceState);
 
 		application = (WalletApplication) getApplication();
-
 		addPreferencesFromResource(R.xml.preferences);
 
-		trustedPeerPreference = findPreference(Constants.PREFS_KEY_TRUSTED_PEER);
+		trustedPeerPreference = findPreference(Configuration.PREFS_KEY_TRUSTED_PEER);
 		trustedPeerPreference.setOnPreferenceChangeListener(this);
 
-		trustedPeerOnlyPreference = findPreference(Constants.PREFS_KEY_TRUSTED_PEER_ONLY);
+		trustedPeerOnlyPreference = findPreference(Configuration.PREFS_KEY_TRUSTED_PEER_ONLY);
 		trustedPeerOnlyPreference.setOnPreferenceChangeListener(this);
+
+		final Preference dataUsagePreference = findPreference(PREFS_KEY_DATA_USAGE);
+		dataUsagePreference.setEnabled(getPackageManager().resolveActivity(dataUsageIntent, 0) != null);
 
 		final ActionBar actionBar = getSupportActionBar();
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		final SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
-		final String trustedPeer = prefs.getString(Constants.PREFS_KEY_TRUSTED_PEER, "").trim();
+		final String trustedPeer = prefs.getString(Configuration.PREFS_KEY_TRUSTED_PEER, "").trim();
 		updateTrustedPeer(trustedPeer);
 	}
 
@@ -98,7 +118,12 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 	{
 		final String key = preference.getKey();
 
-		if (PREFS_KEY_REPORT_ISSUE.equals(key))
+		if (PREFS_KEY_DATA_USAGE.equals(key))
+		{
+			startActivity(dataUsageIntent);
+			finish();
+		}
+		else if (PREFS_KEY_REPORT_ISSUE.equals(key))
 		{
 			final ReportIssueDialogBuilder dialog = new ReportIssueDialogBuilder(this, R.string.report_issue_dialog_title_issue,
 					R.string.report_issue_dialog_message_issue)
@@ -106,7 +131,7 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 				@Override
 				protected CharSequence subject()
 				{
-					return Constants.REPORT_SUBJECT_ISSUE + " " + application.applicationVersionName();
+					return Constants.REPORT_SUBJECT_ISSUE + " " + application.packageInfo().versionName;
 				}
 
 				@Override
@@ -132,20 +157,9 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 				}
 
 				@Override
-				protected CharSequence collectApplicationLog() throws IOException
-				{
-					final StringBuilder applicationLog = new StringBuilder();
-					CrashReporter.appendApplicationLog(applicationLog);
-					if (applicationLog.length() > 0)
-						return applicationLog;
-					else
-						return null;
-				}
-
-				@Override
 				protected CharSequence collectWalletDump()
 				{
-					return application.getWallet().toString(false, null);
+					return application.getWallet().toString(false, true, true, null);
 				}
 			};
 
@@ -155,13 +169,16 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 		}
 		else if (PREFS_KEY_INITIATE_RESET.equals(key))
 		{
-			final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+			final DialogBuilder dialog = new DialogBuilder(this);
 			dialog.setTitle(R.string.preferences_initiate_reset_title);
 			dialog.setMessage(R.string.preferences_initiate_reset_dialog_message);
 			dialog.setPositiveButton(R.string.preferences_initiate_reset_dialog_positive, new OnClickListener()
 			{
+				@Override
 				public void onClick(final DialogInterface dialog, final int which)
 				{
+					log.info("manually initiated blockchain reset");
+
 					application.resetBlockchain();
 					finish();
 				}
@@ -175,6 +192,7 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 		return false;
 	}
 
+	@Override
 	public boolean onPreferenceChange(final Preference preference, final Object newValue)
 	{
 		if (preference.equals(trustedPeerPreference))
@@ -190,7 +208,7 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 		return true;
 	}
 
-	private void updateTrustedPeer(final String trustedPeer)
+	private void updateTrustedPeer(@Nonnull final String trustedPeer)
 	{
 		if (trustedPeer.isEmpty())
 		{

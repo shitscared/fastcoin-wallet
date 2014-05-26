@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,12 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.RejectedExecutionException;
+
+import javax.annotation.Nonnull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -44,12 +50,12 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 import com.actionbarsherlock.app.SherlockListFragment;
-import com.google.bitcoin.core.Peer;
-import com.google.bitcoin.core.VersionMessage;
+import com.google.fastcoin.core.Peer;
+import com.google.fastcoin.core.VersionMessage;
 
 import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.service.BlockchainServiceImpl;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -70,6 +76,8 @@ public final class PeerListFragment extends SherlockListFragment
 	private static final int ID_REVERSE_DNS_LOADER = 1;
 
 	private final Map<InetAddress, String> hostnames = new WeakHashMap<InetAddress, String>();
+
+	private static final Logger log = LoggerFactory.getLogger(PeerListFragment.class);
 
 	@Override
 	public void onAttach(final Activity activity)
@@ -155,6 +163,7 @@ public final class PeerListFragment extends SherlockListFragment
 
 		handler.postDelayed(new Runnable()
 		{
+			@Override
 			public void run()
 			{
 				adapter.notifyDataSetChanged();
@@ -205,6 +214,7 @@ public final class PeerListFragment extends SherlockListFragment
 
 	private final ServiceConnection serviceConnection = new ServiceConnection()
 	{
+		@Override
 		public void onServiceConnected(final ComponentName name, final IBinder binder)
 		{
 			service = ((BlockchainServiceImpl.LocalBinder) binder).getService();
@@ -212,6 +222,7 @@ public final class PeerListFragment extends SherlockListFragment
 			loaderManager.initLoader(ID_PEER_LOADER, null, peerLoaderCallbacks);
 		}
 
+		@Override
 		public void onServiceDisconnected(final ComponentName name)
 		{
 			loaderManager.destroyLoader(ID_PEER_LOADER);
@@ -225,7 +236,7 @@ public final class PeerListFragment extends SherlockListFragment
 		private Context context;
 		private BlockchainService service;
 
-		private PeerLoader(final Context context, final BlockchainService service)
+		private PeerLoader(final Context context, @Nonnull final BlockchainService service)
 		{
 			super(context);
 
@@ -260,18 +271,27 @@ public final class PeerListFragment extends SherlockListFragment
 			@Override
 			public void onReceive(final Context context, final Intent intent)
 			{
-				forceLoad();
+				try
+				{
+					forceLoad();
+				}
+				catch (final RejectedExecutionException x)
+				{
+					log.info("rejected execution: " + PeerLoader.this.toString());
+				}
 			}
 		};
 	}
 
 	private final LoaderCallbacks<List<Peer>> peerLoaderCallbacks = new LoaderCallbacks<List<Peer>>()
 	{
+		@Override
 		public Loader<List<Peer>> onCreateLoader(final int id, final Bundle args)
 		{
 			return new PeerLoader(activity, service);
 		}
 
+		@Override
 		public void onLoadFinished(final Loader<List<Peer>> loader, final List<Peer> peers)
 		{
 			adapter.clear();
@@ -281,6 +301,7 @@ public final class PeerListFragment extends SherlockListFragment
 					adapter.add(peer);
 		}
 
+		@Override
 		public void onLoaderReset(final Loader<List<Peer>> loader)
 		{
 			adapter.clear();
@@ -291,7 +312,7 @@ public final class PeerListFragment extends SherlockListFragment
 	{
 		public final InetAddress address;
 
-		public ReverseDnsLoader(final Context context, final InetAddress address)
+		public ReverseDnsLoader(final Context context, @Nonnull final InetAddress address)
 		{
 			super(context);
 
@@ -307,6 +328,7 @@ public final class PeerListFragment extends SherlockListFragment
 
 	private final LoaderCallbacks<String> reverseDnsLoaderCallbacks = new LoaderCallbacks<String>()
 	{
+		@Override
 		public Loader<String> onCreateLoader(final int id, final Bundle args)
 		{
 			final InetAddress address = (InetAddress) args.getSerializable("address");
@@ -314,6 +336,7 @@ public final class PeerListFragment extends SherlockListFragment
 			return new ReverseDnsLoader(activity, address);
 		}
 
+		@Override
 		public void onLoadFinished(final Loader<String> loader, final String hostname)
 		{
 			final InetAddress address = ((ReverseDnsLoader) loader).address;
@@ -322,6 +345,7 @@ public final class PeerListFragment extends SherlockListFragment
 			loaderManager.destroyLoader(ID_REVERSE_DNS_LOADER);
 		}
 
+		@Override
 		public void onLoaderReset(final Loader<String> loader)
 		{
 		}

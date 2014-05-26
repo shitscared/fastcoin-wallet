@@ -1,20 +1,22 @@
-Questa applicazione è in grado di gestire autonomamente un portafoglio Bitcoin. Puoi inviare Bitcoin tra due terminali semplicemente acquisendo i codici QR visualizzati da questa applicazione oppure utilizzando l'NFC (Near Field Communication).
+Porta i tuoi Fastcoin sempre con te, in tasca! Paghi velocemente scansionando un QR-code. Come un commerciante, riceverai i pagamenti sicuri e istantanei. Fastcoin Wallet è la prima Fastcoin app mobile, e probabilmente anche la più sicura!
 
 CARATTERISTICHE:
 
-• Visualizzazione del saldo in Bitcoin ed altre valute.
-• Invio e ricezione di Bitcoin Bitcoin utilizzando NFC, codici QR o Bitcoin URLs.
-• Rubrica per la memorizzazione degli indirizzi Bitcoin usati regolarmente.
-• Possibilità di impostare transazioni anche offline, eseguite alla prima occasione online.
-• Notifiche di sistema per connettività Bitcoin e la ricezione di Bitcoins.
-• Widget per il saldo Bitcoin.
+• Non è necessaria alcuna registrazione, servizio web o cloud! Questo portafoglio è de-centralizzato e peer to peer.
+• Mostra l'ammontare di Fastcoin in FST e mFST.
+• Conversione verso e dalle monete nazionali.
+• Invio e ricevimento di Fastcoin tramite NFC, codici QR o URL Fastcoin.
+• Rubrica degli indirizzi per usare indirizzi Fastcoin regolarmente.
+• Quando sei offline, puoi comunque ancora pagare via Bluetooth.
+• Sistema di notifica per le monete ricevute.
+• App Widget per il saldo Fastcoin
 
-Puoi trovare maggiori informazioni su Bitcoin qui:
+Puoi trovare altri dettagli su Fastcoin su
 http://bitcoin.org
 
-Se vuoi contribuire a Bitcoin Wallet, l'indirizzo del progetto è
-https://code.google.com/p/bitcoin-wallet/
+Se vuoi contribuire a Fastcoin Wallet, il progetto si trova su
+https://github.com/schildbach/bitcoin-wallet
 
 Licenza: GPLv3
-Usalo a tuo rischio e pericolo!
+Usalo a tuo rischio!
 http://www.gnu.org/licenses/gpl-3.0.en.html

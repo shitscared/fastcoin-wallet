@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 
 package de.schildbach.wallet.ui;
 
+import javax.annotation.Nonnull;
+
 import android.text.InputType;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
@@ -29,11 +31,12 @@ public final class ShowPasswordCheckListener implements OnCheckedChangeListener
 {
 	private EditText passwordView;
 
-	public ShowPasswordCheckListener(final EditText passwordView)
+	public ShowPasswordCheckListener(@Nonnull final EditText passwordView)
 	{
 		this.passwordView = passwordView;
 	}
 
+	@Override
 	public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked)
 	{
 		passwordView.setInputType(InputType.TYPE_CLASS_TEXT

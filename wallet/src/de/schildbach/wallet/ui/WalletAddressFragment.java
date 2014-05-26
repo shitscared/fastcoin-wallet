@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.graphics.Bitmap;
 import android.nfc.NfcManager;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.view.LayoutInflater;
@@ -36,15 +35,17 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.uri.BitcoinURI;
+import com.google.fastcoin.core.Address;
+import com.google.fastcoin.uri.BitcoinURI;
 
+import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.BitmapFragment;
-import de.schildbach.wallet.util.NfcTools;
+import de.schildbach.wallet.util.Nfc;
+import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -53,7 +54,7 @@ public final class WalletAddressFragment extends Fragment
 {
 	private FragmentActivity activity;
 	private WalletApplication application;
-	private SharedPreferences prefs;
+	private Configuration config;
 	private NfcManager nfcManager;
 
 	private View bitcoinAddressButton;
@@ -71,7 +72,7 @@ public final class WalletAddressFragment extends Fragment
 
 		this.activity = (FragmentActivity) activity;
 		this.application = (WalletApplication) activity.getApplication();
-		this.prefs = PreferenceManager.getDefaultSharedPreferences(activity);
+		this.config = application.getConfiguration();
 		this.nfcManager = (NfcManager) activity.getSystemService(Context.NFC_SERVICE);
 	}
 
@@ -85,6 +86,7 @@ public final class WalletAddressFragment extends Fragment
 
 		bitcoinAddressButton.setOnClickListener(new OnClickListener()
 		{
+			@Override
 			public void onClick(final View v)
 			{
 				AddressBookActivity.start(activity, false);
@@ -93,6 +95,7 @@ public final class WalletAddressFragment extends Fragment
 
 		bitcoinAddressQrView.setOnClickListener(new OnClickListener()
 		{
+			@Override
 			public void onClick(final View v)
 			{
 				handleShowQRCode();
@@ -101,6 +104,7 @@ public final class WalletAddressFragment extends Fragment
 
 		bitcoinAddressQrView.setOnLongClickListener(new OnLongClickListener()
 		{
+			@Override
 			public boolean onLongClick(final View v)
 			{
 				startActivity(new Intent(activity, RequestCoinsActivity.class));
@@ -116,7 +120,7 @@ public final class WalletAddressFragment extends Fragment
 	{
 		super.onResume();
 
-		prefs.registerOnSharedPreferenceChangeListener(prefsListener);
+		config.registerOnSharedPreferenceChangeListener(prefsListener);
 
 		updateView();
 	}
@@ -124,9 +128,9 @@ public final class WalletAddressFragment extends Fragment
 	@Override
 	public void onPause()
 	{
-		prefs.unregisterOnSharedPreferenceChangeListener(prefsListener);
+		config.unregisterOnSharedPreferenceChangeListener(prefsListener);
 
-		NfcTools.unpublish(nfcManager, getActivity());
+		Nfc.unpublish(nfcManager, getActivity());
 
 		super.onPause();
 	}
@@ -145,10 +149,10 @@ public final class WalletAddressFragment extends Fragment
 			final String addressStr = BitcoinURI.convertToBitcoinURI(selectedAddress, null, null, null);
 
 			final int size = (int) (256 * getResources().getDisplayMetrics().density);
-			qrCodeBitmap = WalletUtils.getQRCodeBitmap(addressStr, size);
+			qrCodeBitmap = Qr.bitmap(addressStr, size);
 			bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
 
-			NfcTools.publishUri(nfcManager, getActivity(), addressStr);
+			Nfc.publishUri(nfcManager, getActivity(), addressStr);
 		}
 	}
 
@@ -159,9 +163,10 @@ public final class WalletAddressFragment extends Fragment
 
 	private final OnSharedPreferenceChangeListener prefsListener = new OnSharedPreferenceChangeListener()
 	{
+		@Override
 		public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String key)
 		{
-			if (Constants.PREFS_KEY_SELECTED_ADDRESS.equals(key))
+			if (Configuration.PREFS_KEY_SELECTED_ADDRESS.equals(key))
 				updateView();
 		}
 	};

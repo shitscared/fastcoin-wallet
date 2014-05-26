@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,12 +38,13 @@ import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
 
-import com.google.bitcoin.core.ECKey;
-import com.google.bitcoin.core.Wallet;
+import com.google.fastcoin.core.ECKey;
+import com.google.fastcoin.core.Wallet;
 
-import de.schildbach.wallet.util.EncryptionUtils;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.util.Crypto;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -91,13 +92,12 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 		final View view = getLayoutInflater().inflate(R.layout.import_keys_from_content_dialog, null);
 		final EditText passwordView = (EditText) view.findViewById(R.id.import_keys_from_content_dialog_password);
 
-		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setInverseBackgroundForced(true);
-		builder.setIcon(R.drawable.app_icon);
-		builder.setTitle(R.string.import_keys_dialog_title);
-		builder.setView(view);
-		builder.setPositiveButton(R.string.import_keys_dialog_button_import, new OnClickListener()
+		final DialogBuilder dialog = new DialogBuilder(this);
+		dialog.setTitle(R.string.import_keys_dialog_title);
+		dialog.setView(view);
+		dialog.setPositiveButton(R.string.import_keys_dialog_button_import, new OnClickListener()
 		{
+			@Override
 			public void onClick(final DialogInterface dialog, final int which)
 			{
 				final String password = passwordView.getText().toString().trim();
@@ -115,16 +115,18 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 				}
 			}
 		});
-		builder.setNegativeButton(R.string.button_cancel, new OnClickListener()
+		dialog.setNegativeButton(R.string.button_cancel, new OnClickListener()
 		{
+			@Override
 			public void onClick(final DialogInterface dialog, final int which)
 			{
 				passwordView.setText(null); // get rid of it asap
 				finish();
 			}
 		});
-		builder.setOnCancelListener(new OnCancelListener()
+		dialog.setOnCancelListener(new OnCancelListener()
 		{
+			@Override
 			public void onCancel(final DialogInterface dialog)
 			{
 				passwordView.setText(null); // get rid of it asap
@@ -132,7 +134,7 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 			}
 		});
 
-		return builder.create();
+		return dialog.create();
 	}
 
 	private void prepareImportKeysDialog(final Dialog dialog)
@@ -160,7 +162,7 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 	{
 		try
 		{
-			final BufferedReader cipherIn = new BufferedReader(new InputStreamReader(is));
+			final BufferedReader cipherIn = new BufferedReader(new InputStreamReader(is, Constants.UTF_8));
 			final StringBuilder cipherText = new StringBuilder();
 			while (true)
 			{
@@ -172,7 +174,7 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 			}
 			cipherIn.close();
 
-			final String plainText = EncryptionUtils.decrypt(cipherText.toString(), password.toCharArray());
+			final String plainText = Crypto.decrypt(cipherText.toString(), password.toCharArray());
 			final Reader plainReader = new StringReader(plainText);
 
 			final BufferedReader keyReader = new BufferedReader(plainReader);
@@ -182,8 +184,7 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 			final int numKeysToImport = importedKeys.size();
 			final int numKeysImported = wallet.addKeys(importedKeys);
 
-			final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-			dialog.setInverseBackgroundForced(true);
+			final DialogBuilder dialog = new DialogBuilder(this);
 			final StringBuilder message = new StringBuilder();
 			if (numKeysImported > 0)
 				message.append(getString(R.string.import_keys_dialog_success_imported, numKeysImported));
@@ -204,6 +205,7 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 			{
 				dialog.setPositiveButton(R.string.import_keys_dialog_button_reset_blockchain, new DialogInterface.OnClickListener()
 				{
+					@Override
 					public void onClick(final DialogInterface dialog, final int id)
 					{
 						getWalletApplication().resetBlockchain();
@@ -214,29 +216,41 @@ public final class ImportKeysActivity extends AbstractWalletActivity
 			}
 			else
 			{
-				dialog.setNeutralButton(R.string.button_dismiss, finishListener);
+				dialog.singleDismissButton(finishListener);
 			}
 			dialog.setOnCancelListener(finishListener);
 			dialog.show();
+
+			log.info("imported " + numKeysImported + " of " + numKeysToImport + " private keys");
 		}
 		catch (final IOException x)
 		{
-			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setIcon(android.R.drawable.ic_dialog_alert)
-					.setTitle(R.string.import_export_keys_dialog_failure_title)
-					.setMessage(getString(R.string.import_keys_dialog_failure, x.getMessage()))
-					.setNeutralButton(R.string.button_dismiss, finishListener).setOnCancelListener(finishListener).show();
+			final DialogBuilder dialog = DialogBuilder.warn(this, R.string.import_export_keys_dialog_failure_title);
+			dialog.setMessage(getString(R.string.import_keys_dialog_failure, x.getMessage()));
+			dialog.setPositiveButton(R.string.button_dismiss, finishListener).setOnCancelListener(finishListener);
+			dialog.setNegativeButton(R.string.button_retry, new DialogInterface.OnClickListener()
+			{
+				@Override
+				public void onClick(final DialogInterface dialog, final int id)
+				{
+					showDialog(DIALOG_IMPORT_KEYS);
+				}
+			});
+			dialog.show();
 
-			x.printStackTrace();
+			log.info("problem reading private keys", x);
 		}
 	}
 
 	private class FinishListener implements DialogInterface.OnClickListener, DialogInterface.OnCancelListener
 	{
+		@Override
 		public void onClick(final DialogInterface dialog, final int which)
 		{
 			finish();
 		}
 
+		@Override
 		public void onCancel(final DialogInterface dialog)
 		{
 			finish();

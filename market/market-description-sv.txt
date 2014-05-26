@@ -1,19 +1,19 @@
-Detta är en fristående Bitcoin plånbok för Android. Du kan skicka Bitcoins mellan telefoner genom att scanna den QR kod som visas på skärmen. Eller använda NFC (Near Field Communication).
+Detta är en fristående Fastcoin plånbok för Android. Du kan skicka Fastcoins mellan telefoner genom att scanna den QR kod som visas på skärmen. Eller använda NFC (Near Field Communication).
 
 FUNKTIONER:
 
-• Visa plånbokens värde i Bitcoins och andra valutor.
-• Skicka och ta emot Bitcoins via NFC, QR-koder eller en Bitcoin URL.
-• Adressbok för de Bitcoin adresser man använder ofta.
+• Visa plånbokens värde i Fastcoins och andra valutor.
+• Skicka och ta emot Fastcoins via NFC, QR-koder eller en Fastcoin URL.
+• Adressbok för de Fastcoin adresser man använder ofta.
 • Påbörja transaktioner medan du är offline, de utförs när du kommer online.
-• Systemnotifikationer när Bitcoins skickats till dig, och när plånboken kommunicerar med nätverket.
+• Systemnotifikationer när Fastcoins skickats till dig, och när plånboken kommunicerar med nätverket.
 • App widget som visar plånbokens värde.
 
-Du kan lära dig mer om Bitcoin genom att besöka
+Du kan lära dig mer om Fastcoin genom att besöka
 http://bitcoin.org
 
-Om du vill hjälpa till med utvecklingen av Bitcoin Wallet så kan du hitta projektet här
-https://code.google.com/p/bitcoin-wallet/
+Om du vill hjälpa till med utvecklingen av Fastcoin Wallet så kan du hitta projektet här
+https://github.com/schildbach/bitcoin-wallet
 
 Licens: GPLv3
 Använd på egen risk!

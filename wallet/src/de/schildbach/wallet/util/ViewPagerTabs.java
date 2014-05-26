@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ import android.os.Parcelable;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.util.AttributeSet;
 import android.view.View;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -163,18 +163,21 @@ public class ViewPagerTabs extends View implements OnPageChangeListener
 		return (int) (-paint.getFontMetrics().top + paint.getFontMetrics().bottom) + getPaddingTop() + getPaddingBottom();
 	}
 
+	@Override
 	public void onPageScrolled(final int position, final float positionOffset, final int positionOffsetPixels)
 	{
 		pageOffset = position + positionOffset;
 		invalidate();
 	}
 
+	@Override
 	public void onPageSelected(final int position)
 	{
 		pagePosition = position;
 		invalidate();
 	}
 
+	@Override
 	public void onPageScrollStateChanged(final int state)
 	{
 	}

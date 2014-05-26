@@ -26,13 +26,17 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="true" />
+        <module name="fastcoinj (1)" />
         <module name="integration-android" />
         <module name="litecoinj" />
         <module name="wallet" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="bitcoinj-parent" target="1.6" />
+      <module name="fastcoinj" target="1.6" />
+      <module name="fastcoinj-examples" target="1.6" />
+      <module name="fastcoinj-parent" target="1.6" />
+      <module name="fastcoinj-tools" target="1.6" />
       <module name="integration-android" target="1.5" />
       <module name="wallet" target="1.6" />
     </bytecodeTargetLevel>

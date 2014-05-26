@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@ package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
 
+import javax.annotation.Nonnull;
+
 import android.content.Context;
 import android.graphics.Paint;
 import android.text.Editable;
@@ -31,7 +33,7 @@ import android.widget.TextView;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -41,7 +43,8 @@ public final class CurrencyTextView extends TextView
 	private String prefix = null;
 	private ForegroundColorSpan prefixColorSpan = null;
 	private BigInteger amount = null;
-	private int precision = Constants.BTC_PRECISION;
+	private int precision = 0;
+	private int shift = 0;
 	private boolean alwaysSigned = false;
 	private RelativeSizeSpan prefixRelativeSizeSpan = null;
 	private RelativeSizeSpan insignificantRelativeSizeSpan = null;
@@ -56,7 +59,7 @@ public final class CurrencyTextView extends TextView
 		super(context, attrs);
 	}
 
-	public void setPrefix(final String prefix)
+	public void setPrefix(@Nonnull final String prefix)
 	{
 		this.prefix = prefix + Constants.CHAR_HAIR_SPACE;
 		updateView();
@@ -68,15 +71,16 @@ public final class CurrencyTextView extends TextView
 		updateView();
 	}
 
-	public void setAmount(final BigInteger amount)
+	public void setAmount(@Nonnull final BigInteger amount)
 	{
 		this.amount = amount;
 		updateView();
 	}
 
-	public void setPrecision(final int precision)
+	public void setPrecision(final int precision, final int shift)
 	{
 		this.precision = precision;
+		this.shift = shift;
 		updateView();
 	}
 
@@ -126,9 +130,9 @@ public final class CurrencyTextView extends TextView
 		{
 			final String s;
 			if (alwaysSigned)
-				s = GenericUtils.formatValue(amount, Constants.CURRENCY_PLUS_SIGN, Constants.CURRENCY_MINUS_SIGN, precision);
+				s = GenericUtils.formatValue(amount, Constants.CURRENCY_PLUS_SIGN, Constants.CURRENCY_MINUS_SIGN, precision, shift);
 			else
-				s = GenericUtils.formatValue(amount, precision);
+				s = GenericUtils.formatValue(amount, precision, shift);
 
 			text = new SpannableStringBuilder(s);
 			WalletUtils.formatSignificant(text, insignificantRelativeSizeSpan);

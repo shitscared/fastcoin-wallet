@@ -6,6 +6,7 @@
   <component name="FrameworkDetectionExcludesConfiguration">
     <file type="android" url="file://$PROJECT_DIR$" />
   </component>
+  <component name="IdProvider" IDEtalkID="92FBB855ABD89CE716020885A2CEBE11" />
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
@@ -13,14 +14,16 @@
         <option value="$PROJECT_DIR$/../integration-android/pom.xml" />
         <option value="$PROJECT_DIR$/../../litecoinj-0.8/pom.xml" />
         <option value="$PROJECT_DIR$/../../litecoinj-0.8/core/pom.xml" />
-        <option value="$PROJECT_DIR$/../../litecoinj-0.8/core/pom.xml" />
         <option value="$PROJECT_DIR$/../litecoinj-0.8/core/pom.xml" />
+        <option value="$PROJECT_DIR$/../../fastcoinj/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">
       <set>
-        <option value="$PROJECT_DIR$/../../litecoinj-0.8/core/pom.xml" />
-        <option value="$PROJECT_DIR$/../../litecoinj-0.8/pom.xml" />
+        <option value="$PROJECT_DIR$/../../fastcoinj/core/pom.xml" />
+        <option value="$PROJECT_DIR$/../../fastcoinj/examples/pom.xml" />
+        <option value="$PROJECT_DIR$/../../fastcoinj/pom.xml" />
+        <option value="$PROJECT_DIR$/../../fastcoinj/tools/pom.xml" />
       </set>
     </option>
   </component>

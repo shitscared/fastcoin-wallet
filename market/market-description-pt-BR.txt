@@ -1,20 +1,21 @@
-Com este aplicativo você sempre terá seus Bitcoins com você, no seu bolso! Você poderá efetuar pagamentos simplesmente escaneando um código QR ou aproximando dois telefones (NFC). O Bitcoin Wallet foi desenvolvido visando a funcionalidade, segurança e velocidade.
+Tenha os seus Fastcoins sempre com você, no seu bolso! Efetue pagamentos rapidamente apenas escaneando um código QR​​. Como comerciante, você pode receber pagamentos de forma confiável e instantaneamente. O Fastcoin Wallet é o primeiro aplicativo Fastcoin móvel, e, possivelmente, o mais seguro!
 
 CARACTERÍSTICAS:
 
-• Nenhum servidor cloud ou serviço web é necessário! Esta carteira utiliza peer to peer.
-• Visualização do saldo da carteira em Bitcoins e outras moedas.
-• Envio e recebimento de Bitcoins via NFC, códigos QR ou endereços Bitcoin.
+• Sem necessidade de cadastro, serviço web ou hospedagem! Esta carteira é descentralizada e "peer to peer".
+• Exibe a quantidade de Fastcoins em FST e mFST.
+• Conversão para moedas nacionais.
+• Envio e recebimento de Fastcoins via NFC, códigos QR ou endereços Fastcoin.
 • Catálogo para guardar os endereços mais utilizados.
-• As transações efetuadas offline são processadas quando conectado.
-• Notificações de sistema para conectividade Bitcoin e recebimento de moedas.
-• Widget para saldo de Bitcoins.
+• Quando você estiver off-line, você ainda pode pagar via Bluetooth.
+• Notificações do sistema para moedas recebidas.
+• Widget para saldo de Fastcoins.
 
-Mais informações sobre Bitcoin em
+Mais informações sobre Fastcoin em
 http://bitcoin.org
 
-Se você deseja contribuir com o Bitcoin Wallet, o projeto encontra-se em
-https://code.google.com/p/bitcoin-wallet/
+Se você deseja contribuir com o Fastcoin Wallet, o projeto encontra-se em
+https://github.com/schildbach/bitcoin-wallet
 
 Licença: GPLv3
 Use por sua conta e risco!

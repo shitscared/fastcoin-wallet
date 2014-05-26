@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<string-array name="preferences_precision_labels">
+		<item>FST, 8位數</item>
+		<item>FST, 6位數</item>
+		<item>FST, 4位數</item>
+		<item>mFST, 2位數</item>
+	</string-array>
+
+</resources>

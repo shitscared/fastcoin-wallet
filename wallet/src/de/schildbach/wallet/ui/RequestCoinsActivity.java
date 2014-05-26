@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@ import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class RequestCoinsActivity extends AbstractWalletActivity
+public final class RequestCoinsActivity extends AbstractBindServiceActivity
 {
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -59,7 +59,7 @@ public final class RequestCoinsActivity extends AbstractWalletActivity
 				return true;
 
 			case R.id.request_coins_options_help:
-				HelpDialogFragment.page(getSupportFragmentManager(), "help_request_coins");
+				HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_request_coins);
 				return true;
 		}
 

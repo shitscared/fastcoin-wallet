@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
+
+import javax.annotation.Nonnull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -45,18 +52,23 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.actionbarsherlock.app.SherlockListFragment;
-import com.google.bitcoin.core.Block;
-import com.google.bitcoin.core.Sha256Hash;
-import com.google.bitcoin.core.StoredBlock;
-import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.Wallet;
+import com.actionbarsherlock.view.ActionMode;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuInflater;
+import com.actionbarsherlock.view.MenuItem;
+import com.google.fastcoin.core.Block;
+import com.google.fastcoin.core.Sha256Hash;
+import com.google.fastcoin.core.StoredBlock;
+import com.google.fastcoin.core.Transaction;
+import com.google.fastcoin.core.Wallet;
 
+import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.service.BlockchainServiceImpl;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -65,6 +77,7 @@ public final class BlockListFragment extends SherlockListFragment
 {
 	private AbstractWalletActivity activity;
 	private WalletApplication application;
+	private Configuration config;
 	private Wallet wallet;
 	private LoaderManager loaderManager;
 
@@ -78,6 +91,8 @@ public final class BlockListFragment extends SherlockListFragment
 
 	private static final int MAX_BLOCKS = 32;
 
+	private static final Logger log = LoggerFactory.getLogger(BlockListFragment.class);
+
 	@Override
 	public void onAttach(final Activity activity)
 	{
@@ -85,6 +100,7 @@ public final class BlockListFragment extends SherlockListFragment
 
 		this.activity = (AbstractWalletActivity) activity;
 		this.application = this.activity.getWalletApplication();
+		this.config = application.getConfiguration();
 		this.wallet = application.getWallet();
 		this.loaderManager = getLoaderManager();
 	}
@@ -140,13 +156,53 @@ public final class BlockListFragment extends SherlockListFragment
 	public void onListItemClick(final ListView l, final View v, final int position, final long id)
 	{
 		final StoredBlock storedBlock = adapter.getItem(position);
-		final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.BLOCKEXPLORER_BASE_URL + "block/"
-				+ storedBlock.getHeader().getHashAsString()));
-		startActivity(intent);
+
+		activity.startActionMode(new ActionMode.Callback()
+		{
+			@Override
+			public boolean onCreateActionMode(final ActionMode mode, final Menu menu)
+			{
+				final MenuInflater inflater = mode.getMenuInflater();
+				inflater.inflate(R.menu.blocks_context, menu);
+
+				return true;
+			}
+
+			@Override
+			public boolean onPrepareActionMode(final ActionMode mode, final Menu menu)
+			{
+				mode.setTitle(Integer.toString(storedBlock.getHeight()));
+				mode.setSubtitle(storedBlock.getHeader().getHashAsString());
+
+				return true;
+			}
+
+			@Override
+			public boolean onActionItemClicked(final ActionMode mode, final MenuItem item)
+			{
+				switch (item.getItemId())
+				{
+					case R.id.blocks_context_browse:
+						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.EXPLORE_BASE_URL + "block/"
+								+ storedBlock.getHeader().getHashAsString())));
+
+						mode.finish();
+						return true;
+				}
+
+				return false;
+			}
+
+			@Override
+			public void onDestroyActionMode(final ActionMode mode)
+			{
+			}
+		});
 	}
 
 	private final ServiceConnection serviceConnection = new ServiceConnection()
 	{
+		@Override
 		public void onServiceConnected(final ComponentName name, final IBinder binder)
 		{
 			service = ((BlockchainServiceImpl.LocalBinder) binder).getService();
@@ -154,6 +210,7 @@ public final class BlockListFragment extends SherlockListFragment
 			loaderManager.initLoader(ID_BLOCK_LOADER, null, blockLoaderCallbacks);
 		}
 
+		@Override
 		public void onServiceDisconnected(final ComponentName name)
 		{
 			loaderManager.destroyLoader(ID_BLOCK_LOADER);
@@ -187,7 +244,7 @@ public final class BlockListFragment extends SherlockListFragment
 			adapter.notifyDataSetChanged();
 		}
 
-		public void replace(final Collection<StoredBlock> blocks)
+		public void replace(@Nonnull final Collection<StoredBlock> blocks)
 		{
 			this.blocks.clear();
 			this.blocks.addAll(blocks);
@@ -195,16 +252,19 @@ public final class BlockListFragment extends SherlockListFragment
 			notifyDataSetChanged();
 		}
 
+		@Override
 		public int getCount()
 		{
 			return blocks.size();
 		}
 
+		@Override
 		public StoredBlock getItem(final int position)
 		{
 			return blocks.get(position);
 		}
 
+		@Override
 		public long getItemId(final int position)
 		{
 			return WalletUtils.longHash(blocks.get(position).getHeader().getHash());
@@ -216,6 +276,7 @@ public final class BlockListFragment extends SherlockListFragment
 			return true;
 		}
 
+		@Override
 		public View getView(final int position, final View convertView, final ViewGroup parent)
 		{
 			final ViewGroup row;
@@ -243,9 +304,14 @@ public final class BlockListFragment extends SherlockListFragment
 
 			if (transactions != null)
 			{
+				final int fstPrecision = config.getBtcPrecision();
+				final int fstShift = config.getBtcShift();
+
+				transactionsAdapter.setPrecision(fstPrecision, fstShift);
+
 				for (final Transaction tx : transactions)
 				{
-					if (tx.getAppearsInHashes().contains(header.getHash()))
+					if (tx.getAppearsInHashes().containsKey(header.getHash()))
 					{
 						final View view;
 						if (iTransactionView < transactionChildCount)
@@ -313,18 +379,27 @@ public final class BlockListFragment extends SherlockListFragment
 			@Override
 			public void onReceive(final Context context, final Intent intent)
 			{
-				forceLoad();
+				try
+				{
+					forceLoad();
+				}
+				catch (final RejectedExecutionException x)
+				{
+					log.info("rejected execution: " + BlockLoader.this.toString());
+				}
 			}
 		};
 	}
 
 	private final LoaderCallbacks<List<StoredBlock>> blockLoaderCallbacks = new LoaderCallbacks<List<StoredBlock>>()
 	{
+		@Override
 		public Loader<List<StoredBlock>> onCreateLoader(final int id, final Bundle args)
 		{
 			return new BlockLoader(activity, service);
 		}
 
+		@Override
 		public void onLoadFinished(final Loader<List<StoredBlock>> loader, final List<StoredBlock> blocks)
 		{
 			adapter.replace(blocks);
@@ -334,6 +409,7 @@ public final class BlockListFragment extends SherlockListFragment
 				transactionLoader.forceLoad();
 		}
 
+		@Override
 		public void onLoaderReset(final Loader<List<StoredBlock>> loader)
 		{
 			adapter.clear();
@@ -354,12 +430,12 @@ public final class BlockListFragment extends SherlockListFragment
 		@Override
 		public Set<Transaction> loadInBackground()
 		{
-			final Set<Transaction> transactions = wallet.getTransactions(true, false);
+			final Set<Transaction> transactions = wallet.getTransactions(true);
 
 			final Set<Transaction> filteredTransactions = new HashSet<Transaction>(transactions.size());
 			for (final Transaction tx : transactions)
 			{
-				final Collection<Sha256Hash> appearsIn = tx.getAppearsInHashes();
+				final Map<Sha256Hash, Integer> appearsIn = tx.getAppearsInHashes();
 				if (appearsIn != null && !appearsIn.isEmpty()) // TODO filter by updateTime
 					filteredTransactions.add(tx);
 			}
@@ -370,11 +446,13 @@ public final class BlockListFragment extends SherlockListFragment
 
 	private final LoaderCallbacks<Set<Transaction>> transactionLoaderCallbacks = new LoaderCallbacks<Set<Transaction>>()
 	{
+		@Override
 		public Loader<Set<Transaction>> onCreateLoader(final int id, final Bundle args)
 		{
 			return new TransactionsLoader(activity, wallet);
 		}
 
+		@Override
 		public void onLoadFinished(final Loader<Set<Transaction>> loader, final Set<Transaction> transactions)
 		{
 			BlockListFragment.this.transactions = transactions;
@@ -382,6 +460,7 @@ public final class BlockListFragment extends SherlockListFragment
 			adapter.notifyDataSetChanged();
 		}
 
+		@Override
 		public void onLoaderReset(final Loader<Set<Transaction>> loader)
 		{
 			BlockListFragment.this.transactions.clear(); // be nice

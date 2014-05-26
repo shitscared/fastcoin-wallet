@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,14 +18,21 @@
 package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
+import java.util.concurrent.RejectedExecutionException;
+
+import javax.annotation.Nonnull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 import android.support.v4.content.AsyncTaskLoader;
 
-import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.core.Wallet.BalanceType;
+import com.google.fastcoin.core.Wallet;
+import com.google.fastcoin.core.Wallet.BalanceType;
+import com.google.fastcoin.utils.Threading;
 
-import de.schildbach.wallet.util.ThrottelingWalletChangeListener;
+import de.schildbach.wallet.util.ThrottlingWalletChangeListener;
 
 /**
  * @author Andreas Schildbach
@@ -34,7 +41,9 @@ public final class WalletBalanceLoader extends AsyncTaskLoader<BigInteger>
 {
 	private final Wallet wallet;
 
-	public WalletBalanceLoader(final Context context, final Wallet wallet)
+	private static final Logger log = LoggerFactory.getLogger(WalletBalanceLoader.class);
+
+	public WalletBalanceLoader(final Context context, @Nonnull final Wallet wallet)
 	{
 		super(context);
 
@@ -46,7 +55,7 @@ public final class WalletBalanceLoader extends AsyncTaskLoader<BigInteger>
 	{
 		super.onStartLoading();
 
-		wallet.addEventListener(walletChangeListener);
+		wallet.addEventListener(walletChangeListener, Threading.SAME_THREAD);
 
 		forceLoad();
 	}
@@ -66,12 +75,19 @@ public final class WalletBalanceLoader extends AsyncTaskLoader<BigInteger>
 		return wallet.getBalance(BalanceType.ESTIMATED);
 	}
 
-	private final ThrottelingWalletChangeListener walletChangeListener = new ThrottelingWalletChangeListener()
+	private final ThrottlingWalletChangeListener walletChangeListener = new ThrottlingWalletChangeListener()
 	{
 		@Override
-		public void onThrotteledWalletChanged()
+		public void onThrottledWalletChanged()
 		{
-			forceLoad();
+			try
+			{
+				forceLoad();
+			}
+			catch (final RejectedExecutionException x)
+			{
+				log.info("rejected execution: " + WalletBalanceLoader.this.toString());
+			}
 		}
 	};
 }

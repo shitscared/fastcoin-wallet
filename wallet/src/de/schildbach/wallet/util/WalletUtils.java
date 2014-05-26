@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,23 +20,23 @@ package de.schildbach.wallet.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Writer;
-import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.Date;
-import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import android.graphics.Bitmap;
-import android.graphics.Color;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.Spannable;
@@ -46,22 +46,17 @@ import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.text.style.TypefaceSpan;
 
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.AddressFormatException;
-import com.google.bitcoin.core.DumpedPrivateKey;
-import com.google.bitcoin.core.ECKey;
-import com.google.bitcoin.core.ScriptException;
-import com.google.bitcoin.core.Sha256Hash;
-import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.TransactionInput;
-import com.google.bitcoin.core.TransactionOutput;
-import com.google.bitcoin.core.Utils;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import com.google.fastcoin.core.Address;
+import com.google.fastcoin.core.AddressFormatException;
+import com.google.fastcoin.core.DumpedPrivateKey;
+import com.google.fastcoin.core.ECKey;
+import com.google.fastcoin.core.ScriptException;
+import com.google.fastcoin.core.Sha256Hash;
+import com.google.fastcoin.core.Transaction;
+import com.google.fastcoin.core.TransactionInput;
+import com.google.fastcoin.core.TransactionOutput;
+import com.google.fastcoin.core.Wallet;
+import com.google.fastcoin.script.Script;
 
 import de.schildbach.wallet.Constants;
 
@@ -70,57 +65,22 @@ import de.schildbach.wallet.Constants;
  */
 public class WalletUtils
 {
-	public final static QRCodeWriter QR_CODE_WRITER = new QRCodeWriter();
-
-	public static Bitmap getQRCodeBitmap(final String url, final int size)
-	{
-		try
-		{
-			final Hashtable<EncodeHintType, Object> hints = new Hashtable<EncodeHintType, Object>();
-			hints.put(EncodeHintType.MARGIN, 0);
-			hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
-			final BitMatrix result = QR_CODE_WRITER.encode(url, BarcodeFormat.QR_CODE, size, size, hints);
-
-			final int width = result.getWidth();
-			final int height = result.getHeight();
-			final int[] pixels = new int[width * height];
-
-			for (int y = 0; y < height; y++)
-			{
-				final int offset = y * width;
-				for (int x = 0; x < width; x++)
-				{
-					pixels[offset + x] = result.get(x, y) ? Color.BLACK : Color.TRANSPARENT;
-				}
-			}
-
-			final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-			bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
-			return bitmap;
-		}
-		catch (final WriterException x)
-		{
-			x.printStackTrace();
-			return null;
-		}
-	}
-
-	public static Editable formatAddress(final Address address, final int groupSize, final int lineSize)
+	public static Editable formatAddress(@Nonnull final Address address, final int groupSize, final int lineSize)
 	{
 		return formatHash(address.toString(), groupSize, lineSize);
 	}
 
-	public static Editable formatAddress(final String prefix, final Address address, final int groupSize, final int lineSize)
+	public static Editable formatAddress(@Nullable final String prefix, @Nonnull final Address address, final int groupSize, final int lineSize)
 	{
 		return formatHash(prefix, address.toString(), groupSize, lineSize, Constants.CHAR_THIN_SPACE);
 	}
 
-	public static Editable formatHash(final String address, final int groupSize, final int lineSize)
+	public static Editable formatHash(@Nonnull final String address, final int groupSize, final int lineSize)
 	{
 		return formatHash(null, address, groupSize, lineSize, Constants.CHAR_THIN_SPACE);
 	}
 
-	public static long longHash(final Sha256Hash hash)
+	public static long longHash(@Nonnull final Sha256Hash hash)
 	{
 		final byte[] bytes = hash.getBytes();
 
@@ -128,7 +88,8 @@ public class WalletUtils
 				| ((bytes[27] & 0xFFl) << 32) | ((bytes[26] & 0xFFl) << 40) | ((bytes[25] & 0xFFl) << 48) | ((bytes[23] & 0xFFl) << 56);
 	}
 
-	public static Editable formatHash(final String prefix, final String address, final int groupSize, final int lineSize, final char groupSeparator)
+	public static Editable formatHash(@Nullable final String prefix, @Nonnull final String address, final int groupSize, final int lineSize,
+			final char groupSeparator)
 	{
 		final SpannableStringBuilder builder = prefix != null ? new SpannableStringBuilder(prefix) : new SpannableStringBuilder();
 
@@ -154,7 +115,7 @@ public class WalletUtils
 	private static final Object SIGNIFICANT_SPAN = new StyleSpan(Typeface.BOLD);
 	public static final RelativeSizeSpan SMALLER_SPAN = new RelativeSizeSpan(0.85f);
 
-	public static void formatSignificant(final Editable s, final RelativeSizeSpan insignificantRelativeSizeSpan)
+	public static void formatSignificant(@Nonnull final Editable s, @Nullable final RelativeSizeSpan insignificantRelativeSizeSpan)
 	{
 		s.removeSpan(SIGNIFICANT_SPAN);
 		if (insignificantRelativeSizeSpan != null)
@@ -170,17 +131,18 @@ public class WalletUtils
 		}
 	}
 
-	public static BigInteger localValue(final BigInteger btcValue, final BigInteger rate)
+	public static BigInteger localValue(@Nonnull final BigInteger fstValue, @Nonnull final BigInteger rate)
 	{
-		return btcValue.multiply(rate).divide(Utils.COIN);
+		return fstValue.multiply(rate).divide(GenericUtils.ONE_FST);
 	}
 
-	public static BigInteger btcValue(final BigInteger localValue, final BigInteger rate)
+	public static BigInteger fstValue(@Nonnull final BigInteger localValue, @Nonnull final BigInteger rate)
 	{
-		return localValue.multiply(Utils.COIN).divide(rate);
+		return localValue.multiply(GenericUtils.ONE_FST).divide(rate);
 	}
 
-	public static Address getFromAddress(final Transaction tx)
+	@CheckForNull
+	public static Address getFirstFromAddress(@Nonnull final Transaction tx)
 	{
 		if (tx.isCoinBase())
 			return null;
@@ -201,13 +163,14 @@ public class WalletUtils
 		}
 	}
 
-	public static Address getToAddress(final Transaction tx)
+	@CheckForNull
+	public static Address getFirstToAddress(@Nonnull final Transaction tx)
 	{
 		try
 		{
 			for (final TransactionOutput output : tx.getOutputs())
 			{
-				return output.getScriptPubKey().getToAddress();
+				return output.getScriptPubKey().getToAddress(Constants.NETWORK_PARAMETERS);
 			}
 
 			throw new IllegalStateException();
@@ -218,11 +181,35 @@ public class WalletUtils
 		}
 	}
 
-	public static void writeKeys(final Writer out, final List<ECKey> keys) throws IOException
+	public static boolean isInternal(@Nonnull final Transaction tx)
+	{
+		if (tx.isCoinBase())
+			return false;
+
+		final List<TransactionOutput> outputs = tx.getOutputs();
+		if (outputs.size() != 1)
+			return false;
+
+		try
+		{
+			final TransactionOutput output = outputs.get(0);
+			final Script scriptPubKey = output.getScriptPubKey();
+			if (!scriptPubKey.isSentToRawPubKey())
+				return false;
+
+			return true;
+		}
+		catch (final ScriptException x)
+		{
+			return false;
+		}
+	}
+
+	public static void writeKeys(@Nonnull final Writer out, @Nonnull final List<ECKey> keys) throws IOException
 	{
 		final DateFormat format = Iso8601Format.newDateTimeFormatT();
 
-		out.write("# KEEP YOUR PRIVATE KEYS SAFE! Anyone who can read this can spend your Bitcoins.\n");
+		out.write("# KEEP YOUR PRIVATE KEYS SAFE! Anyone who can read this can spend your Fastcoins.\n");
 
 		for (final ECKey key : keys)
 		{
@@ -236,7 +223,7 @@ public class WalletUtils
 		}
 	}
 
-	public static List<ECKey> readKeys(final BufferedReader in) throws IOException
+	public static List<ECKey> readKeys(@Nonnull final BufferedReader in) throws IOException
 	{
 		try
 		{
@@ -274,13 +261,14 @@ public class WalletUtils
 
 	public static final FileFilter KEYS_FILE_FILTER = new FileFilter()
 	{
+		@Override
 		public boolean accept(final File file)
 		{
 			BufferedReader reader = null;
 
 			try
 			{
-				reader = new BufferedReader(new FileReader(file));
+				reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), Constants.UTF_8));
 				WalletUtils.readKeys(reader);
 
 				return true;
@@ -299,25 +287,23 @@ public class WalletUtils
 					}
 					catch (final IOException x)
 					{
-						x.printStackTrace();
+						// swallow
 					}
 				}
 			}
 		}
 	};
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static void chmod(final File path, final int mode)
+	@CheckForNull
+	public static ECKey pickOldestKey(@Nonnull final Wallet wallet)
 	{
-		try
-		{
-			final Class fileUtils = Class.forName("android.os.FileUtils");
-			final Method setPermissions = fileUtils.getMethod("setPermissions", String.class, int.class, int.class, int.class);
-			setPermissions.invoke(null, path.getAbsolutePath(), mode, -1, -1);
-		}
-		catch (final Exception x)
-		{
-			x.printStackTrace();
-		}
+		ECKey oldestKey = null;
+
+		for (final ECKey key : wallet.getKeys())
+			if (!wallet.isKeyRotating(key))
+				if (oldestKey == null || key.getCreationTimeSeconds() < oldestKey.getCreationTimeSeconds())
+					oldestKey = key;
+
+		return oldestKey;
 	}
 }

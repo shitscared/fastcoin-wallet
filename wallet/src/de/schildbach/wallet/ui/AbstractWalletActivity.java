@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 the original author or authors.
+ * Copyright 2011-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,20 +17,20 @@
 
 package de.schildbach.wallet.ui;
 
-import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
-import android.content.SharedPreferences;
+import javax.annotation.Nonnull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.actionbarsherlock.app.SherlockFragmentActivity;
 
-import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -38,6 +38,8 @@ import de.schildbach.wallet_test.R;
 public abstract class AbstractWalletActivity extends SherlockFragmentActivity
 {
 	private WalletApplication application;
+
+	protected static final Logger log = LoggerFactory.getLogger(AbstractWalletActivity.class);
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -52,17 +54,17 @@ public abstract class AbstractWalletActivity extends SherlockFragmentActivity
 		return application;
 	}
 
-	protected final void toast(final String text, final Object... formatArgs)
+	protected final void toast(@Nonnull final String text, final Object... formatArgs)
 	{
 		toast(text, 0, Toast.LENGTH_SHORT, formatArgs);
 	}
 
-	protected final void longToast(final String text, final Object... formatArgs)
+	protected final void longToast(@Nonnull final String text, final Object... formatArgs)
 	{
 		toast(text, 0, Toast.LENGTH_LONG, formatArgs);
 	}
 
-	protected final void toast(final String text, final int imageResId, final int duration, final Object... formatArgs)
+	protected final void toast(@Nonnull final String text, final int imageResId, final int duration, final Object... formatArgs)
 	{
 		final View view = getLayoutInflater().inflate(R.layout.transient_notification, null);
 		TextView tv = (TextView) view.findViewById(R.id.transient_notification_text);
@@ -96,20 +98,5 @@ public abstract class AbstractWalletActivity extends SherlockFragmentActivity
 		toast.setView(view);
 		toast.setDuration(duration);
 		toast.show();
-	}
-
-	protected void parseErrorDialog(final String uri)
-	{
-		final Builder dialog = new AlertDialog.Builder(this);
-		dialog.setTitle(R.string.send_coins_uri_parse_error_title);
-		dialog.setMessage(uri);
-		dialog.setNeutralButton(R.string.button_dismiss, null);
-		dialog.show();
-	}
-
-	protected void touchLastUsed()
-	{
-		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		prefs.edit().putLong(Constants.PREFS_KEY_LAST_USED, System.currentTimeMillis()).commit();
 	}
 }

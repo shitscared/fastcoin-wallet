@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -33,14 +35,14 @@ import android.view.View;
 
 import com.google.zxing.ResultPoint;
 
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
  */
 public class ScannerView extends View
 {
-	private static final long LASER_ANIMATION_DELAY_MS = 50l;
+	private static final long LASER_ANIMATION_DELAY_MS = 100l;
 	private static final int DOT_OPACITY = 0xa0;
 	private static final int DOT_SIZE = 8;
 	private static final int DOT_TTL_MS = 500;
@@ -80,7 +82,7 @@ public class ScannerView extends View
 		dotPaint.setAntiAlias(true);
 	}
 
-	public void setFraming(final Rect frame, final Rect framePreview)
+	public void setFraming(@Nonnull final Rect frame, @Nonnull final Rect framePreview)
 	{
 		this.frame = frame;
 		this.framePreview = framePreview;
@@ -88,14 +90,14 @@ public class ScannerView extends View
 		invalidate();
 	}
 
-	public void drawResultBitmap(final Bitmap bitmap)
+	public void drawResultBitmap(@Nonnull final Bitmap bitmap)
 	{
 		resultBitmap = bitmap;
 
 		invalidate();
 	}
 
-	public void addDot(final ResultPoint dot)
+	public void addDot(@Nonnull final ResultPoint dot)
 	{
 		dots.put(dot, System.currentTimeMillis());
 
@@ -127,7 +129,8 @@ public class ScannerView extends View
 		else
 		{
 			// draw red "laser scanner" to show decoding is active
-			laserPaint.setAlpha((int) ((now) % 256));
+			final boolean laserPhase = (now / 600) % 2 == 0;
+			laserPaint.setAlpha(laserPhase ? 160 : 255);
 			canvas.drawRect(frame, laserPaint);
 
 			// draw points
