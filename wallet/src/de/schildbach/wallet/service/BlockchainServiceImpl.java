@@ -18,8 +18,10 @@
 package de.schildbach.wallet.service;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -405,9 +407,10 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 				final boolean hasTrustedPeer = !trustedPeerHost.isEmpty();
 
 				final boolean connectTrustedPeerOnly = hasTrustedPeer && config.getTrustedPeerOnly();
-				peerGroup.setMaxConnections(connectTrustedPeerOnly ? 1 : maxConnectedPeers);
+				peerGroup.setMaxConnections(12);//connectTrustedPeerOnly ? 1 : maxConnectedPeers);
 
                 peerGroup.addPeerDiscovery(new IrcDiscovery("#fastcoin00"));
+
 
                 peerGroup.addPeerDiscovery(new PeerDiscovery()
 				{
@@ -450,7 +453,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 					}
 				});
 
-				// start peergroup
+                // start peergroup
 				peerGroup.start();
 				peerGroup.startBlockChainDownload(blockchainDownloadListener);
 			}
@@ -612,8 +615,8 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		registerReceiver(connectivityReceiver, intentFilter);
 
 		blockChainFile = new File(getDir("blockstore", Context.MODE_PRIVATE), Constants.BLOCKCHAIN_FILENAME);
-		final boolean blockChainFileExists = blockChainFile.exists();
-
+		 boolean blockChainFileExists = blockChainFile.exists();
+/*
 		if (!blockChainFileExists)
 		{
 			log.info("blockchain does not exist, resetting wallet");
@@ -622,6 +625,33 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 			wallet.setLastBlockSeenHeight(-1); // magic value
 			wallet.setLastBlockSeenHash(null);
 		}
+*/
+        if (!blockChainFileExists)
+        {
+            try {
+
+                //final InputStream checkpointsInputStream = getAssets().open(Constants.BLOCKCHAIN_FILENAME);
+
+                    InputStream in = null;
+                    OutputStream out = null;
+
+                    in = getAssets().open(Constants.BLOCKCHAIN_FILENAME);
+                    File outFile = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),Constants.BLOCKCHAIN_FILENAME);
+
+                    out = new FileOutputStream(outFile);
+                    copyFile(in, out);
+                    in.close();
+                    in = null;
+                    out.flush();
+                    out.close();
+                    out = null;
+
+                blockChainFileExists=true;
+
+            } catch (Exception e) {}
+
+            // wallet.clearTransactions(0);
+        }
 
 		try
 		{
@@ -888,4 +918,13 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 			}
 		}.start();
 	}
+
+    private void copyFile(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[1024];
+        int read;
+        while((read = in.read(buffer)) != -1){
+            out.write(buffer, 0, read);
+        }
+    }
+
 }

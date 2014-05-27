@@ -1,4 +1,7 @@
 .class
 classes/
 target/
+.dex
 lib/
+.idea/
+*.dex
